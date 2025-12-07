@@ -36,10 +36,16 @@ from cortex.branding import (
 
 
 class CortexCLI:
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
         self.spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
         self.spinner_idx = 0
         self.prefs_manager = None  # Lazy initialization
+        self.verbose = verbose
+
+    def _debug(self, message: str):
+        """Print debug info only in verbose mode"""
+        if self.verbose:
+            console.print(f"[dim][DEBUG] {message}[/dim]")
 
     def _get_api_key(self) -> Optional[str]:
         api_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('ANTHROPIC_API_KEY')
@@ -87,8 +93,10 @@ class CortexCLI:
         api_key = self._get_api_key()
         if not api_key:
             return 1
-        
+
         provider = self._get_provider()
+        self._debug(f"Using provider: {provider}")
+        self._debug(f"API key: {api_key[:10]}...{api_key[-4:]}")
         
         # Initialize installation history
         history = InstallationHistory()
@@ -580,8 +588,9 @@ Environment Variables:
         """
     )
 
-    # Version flag
-    parser.add_argument('--version', '-v', action='version', version=f'cortex {VERSION}')
+    # Global flags
+    parser.add_argument('--version', '-V', action='version', version=f'cortex {VERSION}')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Show detailed output')
     
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
 
@@ -624,8 +633,8 @@ Environment Variables:
     if not args.command:
         parser.print_help()
         return 1
-    
-    cli = CortexCLI()
+
+    cli = CortexCLI(verbose=args.verbose)
     
     try:
         if args.command == 'demo':
