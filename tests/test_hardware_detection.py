@@ -544,17 +544,14 @@ class TestEdgeCases:
     @patch("subprocess.run")
     def test_nvidia_smi_not_found(self, mock_run, detector):
         """Test handling missing nvidia-smi."""
-        # First call for lspci succeeds
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="NVIDIA GPU"),
-            FileNotFoundError(),  # nvidia-smi not found
-        ]
+        # nvidia-smi not found
+        mock_run.side_effect = FileNotFoundError()
 
         info = SystemInfo()
         info.has_nvidia_gpu = True
         detector._detect_nvidia_details(info)
 
-        # Should not crash
+        # Should not crash and cuda_available should remain False (default)
         assert info.cuda_available is False
 
     def test_detect_with_missing_proc_files(self, detector):

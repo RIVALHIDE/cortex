@@ -25,7 +25,7 @@ class TestCommandInterpreter(unittest.TestCase):
     def test_initialization_claude(self, mock_anthropic):
         interpreter = CommandInterpreter(api_key=self.api_key, provider="claude")
         self.assertEqual(interpreter.provider, APIProvider.CLAUDE)
-        self.assertEqual(interpreter.model, "claude-3-5-sonnet-20241022")
+        self.assertEqual(interpreter.model, "claude-sonnet-4-20250514")
         mock_anthropic.assert_called_once_with(api_key=self.api_key)
 
     @patch("openai.OpenAI")

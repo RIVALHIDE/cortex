@@ -272,25 +272,30 @@ class TestProgressTracker:
 
     def test_notifications_disabled_when_plyer_unavailable(self):
         """Test that notifications gracefully fail when plyer is unavailable."""
-        with patch("progress_tracker.PLYER_AVAILABLE", False):
+        with patch("cortex.progress_tracker.PLYER_AVAILABLE", False):
             tracker = ProgressTracker("Test", enable_notifications=True)
             # Should not raise an error
             tracker.complete(success=True)
 
-    @patch("cortex.progress_tracker.PLYER_AVAILABLE", True)
-    @patch("cortex.progress_tracker.plyer_notification")
-    def test_notifications_sent(self, mock_notification):
+    def test_notifications_sent(self):
         """Test that notifications are sent when enabled."""
+        mock_notification = MagicMock()
         mock_notification.notify = Mock()
 
-        tracker = ProgressTracker("Test", enable_notifications=True)
-        tracker.start()
-        tracker.complete(success=True, message="Done")
+        with patch("cortex.progress_tracker.PLYER_AVAILABLE", True):
+            with patch.dict("sys.modules", {"plyer": MagicMock(), "plyer.notification": mock_notification}):
+                # Import after patching to get the mock
+                import cortex.progress_tracker as pt
+                pt.plyer_notification = mock_notification
 
-        # Should have sent a notification
-        mock_notification.notify.assert_called_once()
-        call_args = mock_notification.notify.call_args
-        assert "Test Complete" in call_args[1]["title"]
+                tracker = ProgressTracker("Test", enable_notifications=True)
+                tracker.start()
+                tracker.complete(success=True, message="Done")
+
+                # Should have sent a notification
+                mock_notification.notify.assert_called_once()
+                call_args = mock_notification.notify.call_args
+                assert "Test Complete" in call_args[1]["title"]
 
     def test_render_text_progress(self):
         """Test plain text progress rendering."""
@@ -362,13 +367,13 @@ class TestRichProgressTracker:
 
     def test_rich_tracker_requires_rich(self):
         """Test that RichProgressTracker requires rich library."""
-        with patch("progress_tracker.RICH_AVAILABLE", False), pytest.raises(ImportError):
+        with patch("cortex.progress_tracker.RICH_AVAILABLE", False), pytest.raises(ImportError):
             RichProgressTracker("Test")
 
     @patch("cortex.progress_tracker.RICH_AVAILABLE", True)
     def test_rich_tracker_creation(self):
         """Test creating a rich progress tracker."""
-        with patch("progress_tracker.Console"), patch("progress_tracker.Progress"):
+        with patch("cortex.progress_tracker.Console"), patch("cortex.progress_tracker.Progress"):
             tracker = RichProgressTracker("Test")
             assert tracker.operation_name == "Test"
             assert tracker.progress_obj is None
@@ -377,8 +382,8 @@ class TestRichProgressTracker:
     @patch("cortex.progress_tracker.RICH_AVAILABLE", True)
     async def test_live_progress_context(self):
         """Test live progress context manager."""
-        with patch("progress_tracker.Console"):
-            with patch("progress_tracker.Progress") as MockProgress:
+        with patch("cortex.progress_tracker.Console"):
+            with patch("cortex.progress_tracker.Progress") as MockProgress:
                 mock_progress = MagicMock()
                 MockProgress.return_value = mock_progress
                 mock_progress.__enter__ = Mock(return_value=mock_progress)
@@ -560,7 +565,7 @@ class TestEdgeCases:
 
     def test_render_without_rich(self):
         """Test rendering when rich is not available."""
-        with patch("progress_tracker.RICH_AVAILABLE", False):
+        with patch("cortex.progress_tracker.RICH_AVAILABLE", False):
             tracker = ProgressTracker("Test")
             tracker.add_stage("Stage 1")
 

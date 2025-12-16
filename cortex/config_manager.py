@@ -328,7 +328,7 @@ class ConfigManager:
         # Add hardware profile if requested
         if include_hardware:
             try:
-                from hwprofiler import HardwareProfiler
+                from cortex.hwprofiler import HardwareProfiler
 
                 profiler = HardwareProfiler()
                 config["hardware"] = profiler.profile()

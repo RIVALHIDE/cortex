@@ -245,7 +245,6 @@ class HardwareDetector:
                 return None
 
             # Check age
-            age = Path.ctime(self.CACHE_FILE)
             import time
 
             if time.time() - self.CACHE_FILE.stat().st_mtime > self.CACHE_MAX_AGE_SECONDS:
