@@ -153,4 +153,3 @@ def get_api_key_sources() -> dict[str, str | None]:
             sources[key] = None
 
     return sources
-

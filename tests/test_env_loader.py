@@ -327,4 +327,3 @@ class TestApiKeyLoadingIntegration:
                 os.chdir(original_cwd)
                 os.environ.clear()
                 os.environ.update(original_env)
-

@@ -716,6 +716,7 @@ def main():
     # Load environment variables from .env files BEFORE accessing any API keys
     # This must happen before any code that reads os.environ for API keys
     from cortex.env_loader import load_env
+
     load_env()
 
     parser = argparse.ArgumentParser(
