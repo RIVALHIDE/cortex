@@ -778,7 +778,7 @@ class CortexCLI:
                 date = snapshot.timestamp[:19].replace("T", " ")
                 pkg_count = sum(len(pkgs) for pkgs in snapshot.packages.values())
                 desc = snapshot.description[:40] if snapshot.description else "(no description)"
-                print(f"{snapshot.id:<20} {date:<20} {pkg_count:<12} {desc}")
+                print(f"{snapshot.id:<24} {date:<20} {pkg_count:<12} {desc}")
             return 0
             
         elif args.snapshot_action == "show":

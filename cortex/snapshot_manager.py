@@ -297,6 +297,75 @@ class SnapshotManager:
             logger.error(f"Failed to delete snapshot {snapshot_id}: {e}")
             return (False, f"Failed to delete snapshot: {e}")
 
+    def _execute_package_command(self, cmd_list: list[str], dry_run: bool) -> None:
+        """Execute a package management command with timeout protection.
+        
+        Args:
+            cmd_list: Command and arguments as a list
+            dry_run: If True, skip execution
+            
+        Raises:
+            subprocess.CalledProcessError: If command fails
+            subprocess.TimeoutExpired: If command times out
+        """
+        if not dry_run:
+            subprocess.run(
+                cmd_list,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=self.RESTORE_TIMEOUT
+            )
+
+    def _restore_package_manager(
+        self,
+        manager: str,
+        snapshot_packages: dict[str, str],
+        current_packages: dict[str, str],
+        dry_run: bool,
+        commands: list[str]
+    ) -> None:
+        """Restore packages for a specific package manager.
+        
+        Args:
+            manager: Package manager name ('apt', 'pip', 'npm')
+            snapshot_packages: Packages in snapshot {name: version}
+            current_packages: Currently installed packages {name: version}
+            dry_run: If True, only record commands without executing
+            commands: List to append commands to
+        """
+        to_install = set(snapshot_packages.keys()) - set(current_packages.keys())
+        to_remove = set(current_packages.keys()) - set(snapshot_packages.keys())
+
+        # Define manager-specific command templates
+        remove_cmds = {
+            "apt": ["sudo", "apt-get", "remove", "-y"],
+            "pip": ["pip", "uninstall", "-y"],
+            "npm": ["npm", "uninstall", "-g"]
+        }
+        install_cmds = {
+            "apt": ["sudo", "apt-get", "install", "-y"],
+            "pip": ["pip", "install"],
+            "npm": ["npm", "install", "-g"]
+        }
+        version_formats = {
+            "apt": lambda name, ver: name,  # APT installs latest by default
+            "pip": lambda name, ver: f"{name}=={ver}",
+            "npm": lambda name, ver: f"{name}@{ver}"
+        }
+
+        if to_remove:
+            cmd_list = remove_cmds[manager] + sorted(to_remove)
+            commands.append(" ".join(cmd_list))
+            self._execute_package_command(cmd_list, dry_run)
+
+        if to_install:
+            fmt = version_formats[manager]
+            packages = [fmt(name, snapshot_packages[name]) for name in sorted(to_install)]
+            cmd_list = install_cmds[manager] + packages
+            commands.append(" ".join(cmd_list))
+            self._execute_package_command(cmd_list, dry_run)
+
     def restore_snapshot(
         self, snapshot_id: str, dry_run: bool = False
     ) -> tuple[bool, str, list[str]]:
@@ -339,64 +408,15 @@ class SnapshotManager:
             current_pip = {pkg["name"]: pkg["version"] for pkg in self._detect_pip_packages()}
             current_npm = {pkg["name"]: pkg["version"] for pkg in self._detect_npm_packages()}
 
-            # Calculate differences for APT
+            # Restore packages for each manager
             snapshot_apt = {pkg["name"]: pkg["version"] for pkg in snapshot.packages.get("apt", [])}
-            apt_to_install = set(snapshot_apt.keys()) - set(current_apt.keys())
-            apt_to_remove = set(current_apt.keys()) - set(snapshot_apt.keys())
+            self._restore_package_manager("apt", snapshot_apt, current_apt, dry_run, commands)
 
-            if apt_to_remove:
-                # Use list-based command to prevent shell injection
-                cmd_list = ["sudo", "apt-get", "remove", "-y"] + sorted(apt_to_remove)
-                commands.append(" ".join(cmd_list))  # For display
-                if not dry_run:
-                    subprocess.run(cmd_list, check=True, capture_output=True, text=True, timeout=self.RESTORE_TIMEOUT)
-
-            if apt_to_install:
-                # Use list-based command to prevent shell injection
-                cmd_list = ["sudo", "apt-get", "install", "-y"] + sorted(apt_to_install)
-                commands.append(" ".join(cmd_list))  # For display
-                if not dry_run:
-                    subprocess.run(cmd_list, check=True, capture_output=True, text=True, timeout=self.RESTORE_TIMEOUT)
-
-            # Calculate differences for PIP
             snapshot_pip = {pkg["name"]: pkg["version"] for pkg in snapshot.packages.get("pip", [])}
-            pip_to_install = set(snapshot_pip.keys()) - set(current_pip.keys())
-            pip_to_remove = set(current_pip.keys()) - set(snapshot_pip.keys())
+            self._restore_package_manager("pip", snapshot_pip, current_pip, dry_run, commands)
 
-            if pip_to_remove:
-                # Use list-based command to prevent shell injection
-                cmd_list = ["pip", "uninstall", "-y"] + sorted(pip_to_remove)
-                commands.append(" ".join(cmd_list))  # For display
-                if not dry_run:
-                    subprocess.run(cmd_list, check=True, capture_output=True, text=True, timeout=self.RESTORE_TIMEOUT)
-
-            if pip_to_install:
-                # Use list-based command to prevent shell injection
-                packages_with_versions = [f"{name}=={snapshot_pip[name]}" for name in sorted(pip_to_install)]
-                cmd_list = ["pip", "install"] + packages_with_versions
-                commands.append(" ".join(cmd_list))  # For display
-                if not dry_run:
-                    subprocess.run(cmd_list, check=True, capture_output=True, text=True, timeout=self.RESTORE_TIMEOUT)
-
-            # Calculate differences for NPM
             snapshot_npm = {pkg["name"]: pkg["version"] for pkg in snapshot.packages.get("npm", [])}
-            npm_to_install = set(snapshot_npm.keys()) - set(current_npm.keys())
-            npm_to_remove = set(current_npm.keys()) - set(snapshot_npm.keys())
-
-            if npm_to_remove:
-                # Use list-based command to prevent shell injection
-                cmd_list = ["npm", "uninstall", "-g"] + sorted(npm_to_remove)
-                commands.append(" ".join(cmd_list))  # For display
-                if not dry_run:
-                    subprocess.run(cmd_list, check=True, capture_output=True, text=True, timeout=self.RESTORE_TIMEOUT)
-
-            if npm_to_install:
-                # Use list-based command to prevent shell injection
-                packages_with_versions = [f"{name}@{snapshot_npm[name]}" for name in sorted(npm_to_install)]
-                cmd_list = ["npm", "install", "-g"] + packages_with_versions
-                commands.append(" ".join(cmd_list))  # For display
-                if not dry_run:
-                    subprocess.run(cmd_list, check=True, capture_output=True, text=True, timeout=self.RESTORE_TIMEOUT)
+            self._restore_package_manager("npm", snapshot_npm, current_npm, dry_run, commands)
 
             if dry_run:
                 return (True, f"Dry-run complete. {len(commands)} commands would be executed.", commands)
