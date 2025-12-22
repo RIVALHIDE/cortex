@@ -194,13 +194,13 @@ class TestSnapshotManager(unittest.TestCase):
         
         # Create 12 snapshots manually (exceeds limit of 10)
         for i in range(12):
-            snapshot_id = f"2025010{i % 10}_12000{i}"
+            snapshot_id = f"2025010{(i % 9) + 1}_12000{i}"
             snapshot_path = self.snapshots_dir / snapshot_id
             snapshot_path.mkdir(parents=True)
             
             metadata = {
                 "id": snapshot_id,
-                "timestamp": f"2025-01-0{i % 10}T12:00:0{i}",
+                "timestamp": f"2025-01-0{(i % 9) + 1}T12:00:0{i}",
                 "description": f"Snapshot {i}",
                 "packages": {"apt": [], "pip": [], "npm": []},
                 "system_info": {},
