@@ -45,23 +45,43 @@ class SnapshotManager:
     - Store snapshot metadata with descriptions
     - List all available snapshots
     - Restore system to a previous snapshot state
-    - Auto-cleanup old snapshots (retention policy: 10 max)
+    - Auto-cleanup old snapshots (configurable retention policy)
+    - User-configurable via preferences
     """
 
-    RETENTION_LIMIT = 10
+    DEFAULT_RETENTION_LIMIT = 10
     TIMEOUT = 30  # seconds for package detection
     RESTORE_TIMEOUT = 300  # seconds for package install/remove operations
 
-    def __init__(self, snapshots_dir: Path | None = None):
+    def __init__(self, snapshots_dir: Path | None = None, retention_limit: int | None = None):
         """
         Initialize SnapshotManager.
 
         Args:
             snapshots_dir: Directory to store snapshots (defaults to ~/.cortex/snapshots)
+            retention_limit: Maximum snapshots to keep (defaults to user preference or 10)
         """
         self.snapshots_dir = snapshots_dir or Path.home() / ".cortex" / "snapshots"
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Load retention limit from preferences or use provided/default
+        if retention_limit is not None:
+            self.retention_limit = retention_limit
+        else:
+            self.retention_limit = self._load_retention_from_preferences()
+        
         self._enforce_directory_security()
+
+    def _load_retention_from_preferences(self) -> int:
+        """Load retention limit from user preferences"""
+        try:
+            from cortex.user_preferences import PreferencesManager
+            prefs_manager = PreferencesManager()
+            prefs = prefs_manager.get_preferences()
+            return prefs.snapshots.retention_limit
+        except Exception:
+            # Fall back to default if preferences not available
+            return self.DEFAULT_RETENTION_LIMIT
 
     def _enforce_directory_security(self) -> None:
         """Ensure snapshots directory has secure permissions (700)"""
@@ -448,15 +468,15 @@ class SnapshotManager:
             return (False, f"Failed to restore snapshot: {e}", commands)
 
     def _apply_retention_policy(self) -> None:
-        """Remove oldest snapshots if count exceeds RETENTION_LIMIT"""
+        """Remove oldest snapshots if count exceeds retention_limit"""
         try:
             snapshots = self.list_snapshots()
-            if len(snapshots) > self.RETENTION_LIMIT:
+            if len(snapshots) > self.retention_limit:
                 # Sort by timestamp (oldest first)
                 snapshots.sort(key=lambda s: s.timestamp)
 
                 # Delete oldest snapshots
-                to_delete = len(snapshots) - self.RETENTION_LIMIT
+                to_delete = len(snapshots) - self.retention_limit
                 for i in range(to_delete):
                     snapshot_id = snapshots[i].id
                     self.delete_snapshot(snapshot_id)
