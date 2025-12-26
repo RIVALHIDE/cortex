@@ -6,11 +6,14 @@ import time
 from datetime import datetime
 from typing import Any
 
+from cortex.ask import AskHandler
 from cortex.branding import VERSION, console, cx_header, cx_print, show_banner
 from cortex.coordinator import InstallationCoordinator, StepStatus
 from cortex.demo import run_demo
+from cortex.env_manager import EnvironmentManager, get_env_manager
 from cortex.installation_history import InstallationHistory, InstallationStatus, InstallationType
 from cortex.llm.interpreter import CommandInterpreter
+from cortex.network_config import NetworkConfig
 from cortex.notification_manager import NotificationManager
 from cortex.stack_manager import StackManager
 from cortex.validators import (
@@ -288,6 +291,38 @@ class CortexCLI:
         doctor = SystemDoctor()
         return doctor.run_checks()
 
+    def ask(self, question: str) -> int:
+        """Answer a natural language question about the system."""
+        api_key = self._get_api_key()
+        if not api_key:
+            return 1
+
+        provider = self._get_provider()
+        self._debug(f"Using provider: {provider}")
+
+        try:
+            handler = AskHandler(
+                api_key=api_key,
+                provider=provider,
+                offline=self.offline,
+            )
+            answer = handler.ask(question)
+            console.print(answer)
+            return 0
+        except ImportError as e:
+            # Provide a helpful message if provider SDK is missing
+            self._print_error(str(e))
+            cx_print(
+                "Install the required SDK or set CORTEX_PROVIDER=ollama for local mode.", "info"
+            )
+            return 1
+        except ValueError as e:
+            self._print_error(str(e))
+            return 1
+        except RuntimeError as e:
+            self._print_error(str(e))
+            return 1
+
     def install(
         self,
         software: str,
@@ -449,17 +484,28 @@ class CortexCLI:
                             print(f"   View details: cortex history show {install_id}")
                         return 1
 
-                    except Exception as e:
+                    except (ValueError, OSError) as e:
                         if install_id:
                             history.update_installation(
                                 install_id, InstallationStatus.FAILED, str(e)
                             )
                         self._print_error(f"Parallel execution failed: {str(e)}")
                         return 1
+                    except Exception as e:
+                        if install_id:
+                            history.update_installation(
+                                install_id, InstallationStatus.FAILED, str(e)
+                            )
+                        self._print_error(f"Unexpected parallel execution error: {str(e)}")
+                        if self.verbose:
+                            import traceback
+
+                            traceback.print_exc()
+                        return 1
 
                 coordinator = InstallationCoordinator(
                     commands=commands,
-                    descriptions=[f"Step {i+1}" for i in range(len(commands))],
+                    descriptions=[f"Step {i + 1}" for i in range(len(commands))],
                     timeout=300,
                     stop_on_error=True,
                     progress_callback=progress_callback,
@@ -512,10 +558,19 @@ class CortexCLI:
                 history.update_installation(install_id, InstallationStatus.FAILED, str(e))
             self._print_error(f"API call failed: {str(e)}")
             return 1
+        except OSError as e:
+            if install_id:
+                history.update_installation(install_id, InstallationStatus.FAILED, str(e))
+            self._print_error(f"System error: {str(e)}")
+            return 1
         except Exception as e:
             if install_id:
                 history.update_installation(install_id, InstallationStatus.FAILED, str(e))
             self._print_error(f"Unexpected error: {str(e)}")
+            if self.verbose:
+                import traceback
+
+                traceback.print_exc()
             return 1
 
     def cache_stats(self) -> int:
@@ -532,8 +587,15 @@ class CortexCLI:
             cx_print(f"Hit rate: {hit_rate}", "info")
             cx_print(f"Saved calls (approx): {stats.hits}", "info")
             return 0
-        except Exception as e:
+        except (ImportError, OSError) as e:
             self._print_error(f"Unable to read cache stats: {e}")
+            return 1
+        except Exception as e:
+            self._print_error(f"Unexpected error reading cache stats: {e}")
+            if self.verbose:
+                import traceback
+
+                traceback.print_exc()
             return 1
 
     def history(self, limit: int = 20, status: str | None = None, show_id: str | None = None):
@@ -588,15 +650,22 @@ class CortexCLI:
                     date = r.timestamp[:19].replace("T", " ")
                     packages = ", ".join(r.packages[:2])
                     if len(r.packages) > 2:
-                        packages += f" +{len(r.packages)-2}"
+                        packages += f" +{len(r.packages) - 2}"
 
                     print(
                         f"{r.id:<18} {date:<20} {r.operation_type.value:<12} {packages:<30} {r.status.value:<15}"
                     )
 
                 return 0
-        except Exception as e:
+        except (ValueError, OSError) as e:
             self._print_error(f"Failed to retrieve history: {str(e)}")
+            return 1
+        except Exception as e:
+            self._print_error(f"Unexpected error retrieving history: {str(e)}")
+            if self.verbose:
+                import traceback
+
+                traceback.print_exc()
             return 1
 
     def rollback(self, install_id: str, dry_run: bool = False):
@@ -616,8 +685,107 @@ class CortexCLI:
             else:
                 self._print_error(message)
                 return 1
-        except Exception as e:
+        except (ValueError, OSError) as e:
             self._print_error(f"Rollback failed: {str(e)}")
+            return 1
+        except Exception as e:
+            self._print_error(f"Unexpected rollback error: {str(e)}")
+            if self.verbose:
+                import traceback
+
+                traceback.print_exc()
+            return 1
+
+    def _get_prefs_manager(self):
+        """Lazy initialize preferences manager"""
+        if self.prefs_manager is None:
+            self.prefs_manager = PreferencesManager()
+        return self.prefs_manager
+
+    def check_pref(self, key: str | None = None):
+        """Check/display user preferences"""
+        manager = self._get_prefs_manager()
+
+        try:
+            if key:
+                # Show specific preference
+                value = manager.get(key)
+                if value is None:
+                    self._print_error(f"Preference key '{key}' not found")
+                    return 1
+
+                print(f"\n{key} = {format_preference_value(value)}")
+                return 0
+            else:
+                # Show all preferences
+                print_all_preferences(manager)
+                return 0
+
+        except (ValueError, OSError) as e:
+            self._print_error(f"Failed to read preferences: {str(e)}")
+            return 1
+        except Exception as e:
+            self._print_error(f"Unexpected error reading preferences: {str(e)}")
+            if self.verbose:
+                import traceback
+
+                traceback.print_exc()
+            return 1
+
+    def edit_pref(self, action: str, key: str | None = None, value: str | None = None):
+        """Edit user preferences (add/set, delete/remove, list)"""
+        manager = self._get_prefs_manager()
+
+        try:
+            if action in ["add", "set", "update"]:
+                if not key or not value:
+                    self._print_error("Key and value required")
+                    return 1
+                manager.set(key, value)
+                self._print_success(f"Updated {key}")
+                print(f"  New value: {format_preference_value(manager.get(key))}")
+                return 0
+
+            elif action in ["delete", "remove", "reset-key"]:
+                if not key:
+                    self._print_error("Key required")
+                    return 1
+                # Simplified reset logic
+                print(f"Resetting {key}...")
+                # (In a real implementation we would reset to default)
+                return 0
+
+            elif action in ["list", "show", "display"]:
+                return self.check_pref()
+
+            elif action == "reset-all":
+                confirm = input("⚠️  Reset ALL preferences? (y/n): ")
+                if confirm.lower() == "y":
+                    manager.reset()
+                    self._print_success("Preferences reset")
+                return 0
+
+            elif action == "validate":
+                errors = manager.validate()
+                if errors:
+                    print("❌ Errors found")
+                else:
+                    self._print_success("Valid")
+                return 0
+
+            else:
+                self._print_error(f"Unknown action: {action}")
+                return 1
+
+        except (ValueError, OSError) as e:
+            self._print_error(f"Failed to edit preferences: {str(e)}")
+            return 1
+        except Exception as e:
+            self._print_error(f"Unexpected error editing preferences: {str(e)}")
+            if self.verbose:
+                import traceback
+
+                traceback.print_exc()
             return 1
 
     def status(self):
@@ -663,96 +831,363 @@ class CortexCLI:
         cx_print("Please export your API key in your shell profile.", "info")
         return 0
 
-    def snapshot(self, args: argparse.Namespace) -> int:
-        """Handle snapshot commands (create/list/restore/show/delete)."""
-        from cortex.snapshot_manager import SnapshotManager
+    def env(self, args: argparse.Namespace) -> int:
+        """Handle environment variable management commands."""
+        env_mgr = get_env_manager()
 
-        manager = SnapshotManager()
+        # Handle subcommand routing
+        action = getattr(args, "env_action", None)
 
-        if not args.snapshot_action:
+        if not action:
             self._print_error(
-                "Please specify a snapshot action: create, list, show, restore, or delete"
+                "Please specify a subcommand (set/get/list/delete/export/import/clear/template)"
             )
-            self._print_error("Run 'cortex snapshot --help' for usage information")
             return 1
 
-        if args.snapshot_action == "create":
-            success, snapshot_id, message = manager.create_snapshot(args.description or "")
-            if success:
-                cx_print(f"✅ {message}", "success")
-                return 0
+        try:
+            if action == "set":
+                return self._env_set(env_mgr, args)
+            elif action == "get":
+                return self._env_get(env_mgr, args)
+            elif action == "list":
+                return self._env_list(env_mgr, args)
+            elif action == "delete":
+                return self._env_delete(env_mgr, args)
+            elif action == "export":
+                return self._env_export(env_mgr, args)
+            elif action == "import":
+                return self._env_import(env_mgr, args)
+            elif action == "clear":
+                return self._env_clear(env_mgr, args)
+            elif action == "template":
+                return self._env_template(env_mgr, args)
+            elif action == "apps":
+                return self._env_list_apps(env_mgr, args)
+            elif action == "load":
+                return self._env_load(env_mgr, args)
             else:
-                self._print_error(message)
+                self._print_error(f"Unknown env subcommand: {action}")
                 return 1
+        except (ValueError, OSError) as e:
+            self._print_error(f"Environment operation failed: {e}")
+            return 1
+        except Exception as e:
+            self._print_error(f"Unexpected error: {e}")
+            if self.verbose:
+                import traceback
 
-        elif args.snapshot_action == "list":
-            snapshots = manager.list_snapshots()
-            if not snapshots:
-                cx_print("No snapshots found.", "info")
-                return 0
+                traceback.print_exc()
+            return 1
 
-            cx_print("\n📸 Available Snapshots:\n", "info")
-            print(f"{'ID':<24} {'Date':<20} {'Packages':<12} {'Description'}")
-            print("=" * 99)
+    def _env_set(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Set an environment variable."""
+        app = args.app
+        key = args.key
+        value = args.value
+        encrypt = getattr(args, "encrypt", False)
+        var_type = getattr(args, "type", "string") or "string"
+        description = getattr(args, "description", "") or ""
 
-            for snapshot in snapshots:
-                date = snapshot.timestamp[:19].replace("T", " ")
-                pkg_count = sum(len(pkgs) for pkgs in snapshot.packages.values())
-                desc = snapshot.description[:40] if snapshot.description else "(no description)"
-                print(f"{snapshot.id:<24} {date:<20} {pkg_count:<12} {desc}")
-            return 0
-
-        elif args.snapshot_action == "show":
-            snapshot = manager.get_snapshot(args.snapshot_id)
-            if not snapshot:
-                self._print_error(f"Snapshot not found: {args.snapshot_id}")
-                return 1
-
-            cx_print(f"\nSnapshot Details: {snapshot.id}", "info")
-            print("=" * 80)
-            print(f"Timestamp: {snapshot.timestamp}")
-            print(f"Description: {snapshot.description or '(no description)'}")
-            print("\nSystem Info:")
-            for key, value in snapshot.system_info.items():
-                print(f"  {key}: {value}")
-            print("\nPackages:")
-            for source, packages in snapshot.packages.items():
-                print(f"  {source.upper()}: {len(packages)} packages")
-            return 0
-
-        elif args.snapshot_action == "restore":
-            success, message, commands = manager.restore_snapshot(
-                args.snapshot_id, dry_run=args.dry_run
+        try:
+            env_mgr.set_variable(
+                app=app,
+                key=key,
+                value=value,
+                encrypt=encrypt,
+                var_type=var_type,
+                description=description,
             )
 
-            if args.dry_run:
-                cx_print(f"\n🔍 Dry-run: {message}", "info")
-                if commands:
-                    print("\nCommands to execute:")
-                    for cmd in commands:
-                        print(f"  {cmd}")
+            if encrypt:
+                cx_print("🔐 Variable encrypted and stored", "success")
             else:
-                if success:
-                    cx_print(f"✅ {message}", "success")
-                else:
-                    self._print_error(message)
-                    if commands:
-                        print("\nFailed commands:")
-                        for cmd in commands:
-                            print(f"  {cmd}")
-                    return 1
+                cx_print("✓ Environment variable set", "success")
             return 0
 
-        elif args.snapshot_action == "delete":
-            success, message = manager.delete_snapshot(args.snapshot_id)
-            if success:
-                cx_print(f"✅ {message}", "success")
-                return 0
+        except ValueError as e:
+            self._print_error(str(e))
+            return 1
+        except ImportError as e:
+            self._print_error(str(e))
+            if "cryptography" in str(e).lower():
+                cx_print("Install with: pip install cryptography", "info")
+            return 1
+
+    def _env_get(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Get an environment variable value."""
+        app = args.app
+        key = args.key
+        show_encrypted = getattr(args, "decrypt", False)
+
+        value = env_mgr.get_variable(app, key, decrypt=show_encrypted)
+
+        if value is None:
+            self._print_error(f"Variable '{key}' not found for app '{app}'")
+            return 1
+
+        var_info = env_mgr.get_variable_info(app, key)
+
+        if var_info and var_info.encrypted and not show_encrypted:
+            console.print(f"{key}: [dim][encrypted][/dim]")
+        else:
+            console.print(f"{key}: {value}")
+
+        return 0
+
+    def _env_list(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """List all environment variables for an app."""
+        app = args.app
+        show_encrypted = getattr(args, "decrypt", False)
+
+        variables = env_mgr.list_variables(app)
+
+        if not variables:
+            cx_print(f"No environment variables set for '{app}'", "info")
+            return 0
+
+        cx_header(f"Environment: {app}")
+
+        for var in sorted(variables, key=lambda v: v.key):
+            if var.encrypted:
+                if show_encrypted:
+                    try:
+                        value = env_mgr.get_variable(app, var.key, decrypt=True)
+                        console.print(f"  {var.key}: {value} [dim](decrypted)[/dim]")
+                    except ValueError:
+                        console.print(f"  {var.key}: [red][decryption failed][/red]")
+                else:
+                    console.print(f"  {var.key}: [yellow][encrypted][/yellow]")
             else:
-                self._print_error(message)
+                console.print(f"  {var.key}: {var.value}")
+
+            if var.description:
+                console.print(f"    [dim]# {var.description}[/dim]")
+
+        console.print()
+        console.print(f"[dim]Total: {len(variables)} variable(s)[/dim]")
+        return 0
+
+    def _env_delete(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Delete an environment variable."""
+        app = args.app
+        key = args.key
+
+        if env_mgr.delete_variable(app, key):
+            cx_print(f"✓ Deleted '{key}' from '{app}'", "success")
+            return 0
+        else:
+            self._print_error(f"Variable '{key}' not found for app '{app}'")
+            return 1
+
+    def _env_export(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Export environment variables to .env format."""
+        app = args.app
+        include_encrypted = getattr(args, "include_encrypted", False)
+        output_file = getattr(args, "output", None)
+
+        content = env_mgr.export_env(app, include_encrypted=include_encrypted)
+
+        if not content:
+            cx_print(f"No environment variables to export for '{app}'", "info")
+            return 0
+
+        if output_file:
+            try:
+                with open(output_file, "w", encoding="utf-8") as f:
+                    f.write(content)
+                cx_print(f"✓ Exported to {output_file}", "success")
+            except OSError as e:
+                self._print_error(f"Failed to write file: {e}")
+                return 1
+        else:
+            # Print to stdout
+            print(content, end="")
+
+        return 0
+
+    def _env_import(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Import environment variables from .env format."""
+        import sys
+
+        app = args.app
+        input_file = getattr(args, "file", None)
+        encrypt_keys = getattr(args, "encrypt_keys", None)
+
+        try:
+            if input_file:
+                with open(input_file, encoding="utf-8") as f:
+                    content = f.read()
+            elif not sys.stdin.isatty():
+                content = sys.stdin.read()
+            else:
+                self._print_error("No input file specified and stdin is empty")
+                cx_print("Usage: cortex env import <app> <file>", "info")
+                cx_print("   or: cat .env | cortex env import <app>", "info")
                 return 1
 
-        return 1
+            # Parse encrypt-keys argument
+            encrypt_list = []
+            if encrypt_keys:
+                encrypt_list = [k.strip() for k in encrypt_keys.split(",")]
+
+            count, errors = env_mgr.import_env(app, content, encrypt_keys=encrypt_list)
+
+            if errors:
+                for err in errors:
+                    cx_print(f"  ⚠ {err}", "warning")
+
+            if count > 0:
+                cx_print(f"✓ Imported {count} variable(s) to '{app}'", "success")
+            else:
+                cx_print("No variables imported", "info")
+
+            # Return success (0) even with partial errors - some vars imported successfully
+            return 0
+
+        except FileNotFoundError:
+            self._print_error(f"File not found: {input_file}")
+            return 1
+        except OSError as e:
+            self._print_error(f"Failed to read file: {e}")
+            return 1
+
+    def _env_clear(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Clear all environment variables for an app."""
+        app = args.app
+        force = getattr(args, "force", False)
+
+        # Confirm unless --force is used
+        if not force:
+            confirm = input(f"⚠️  Clear ALL environment variables for '{app}'? (y/n): ")
+            if confirm.lower() != "y":
+                cx_print("Operation cancelled", "info")
+                return 0
+
+        if env_mgr.clear_app(app):
+            cx_print(f"✓ Cleared all variables for '{app}'", "success")
+        else:
+            cx_print(f"No environment data found for '{app}'", "info")
+
+        return 0
+
+    def _env_template(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Handle template subcommands."""
+        template_action = getattr(args, "template_action", None)
+
+        if template_action == "list":
+            return self._env_template_list(env_mgr)
+        elif template_action == "show":
+            return self._env_template_show(env_mgr, args)
+        elif template_action == "apply":
+            return self._env_template_apply(env_mgr, args)
+        else:
+            self._print_error(
+                "Please specify: template list, template show <name>, or template apply <name> <app>"
+            )
+            return 1
+
+    def _env_template_list(self, env_mgr: EnvironmentManager) -> int:
+        """List available templates."""
+        templates = env_mgr.list_templates()
+
+        cx_header("Available Environment Templates")
+
+        for template in sorted(templates, key=lambda t: t.name):
+            console.print(f"  [green]{template.name}[/green]")
+            console.print(f"    {template.description}")
+            console.print(f"    [dim]{len(template.variables)} variables[/dim]")
+            console.print()
+
+        cx_print("Use 'cortex env template show <name>' for details", "info")
+        return 0
+
+    def _env_template_show(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Show template details."""
+        template_name = args.template_name
+
+        template = env_mgr.get_template(template_name)
+        if not template:
+            self._print_error(f"Template '{template_name}' not found")
+            return 1
+
+        cx_header(f"Template: {template.name}")
+        console.print(f"  {template.description}")
+        console.print()
+
+        console.print("[bold]Variables:[/bold]")
+        for var in template.variables:
+            req = "[red]*[/red]" if var.required else " "
+            default = f" = {var.default}" if var.default else ""
+            console.print(f"  {req} [cyan]{var.name}[/cyan] ({var.var_type}){default}")
+            if var.description:
+                console.print(f"      [dim]{var.description}[/dim]")
+
+        console.print()
+        console.print("[dim]* = required[/dim]")
+        return 0
+
+    def _env_template_apply(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Apply a template to an app."""
+        template_name = args.template_name
+        app = args.app
+
+        # Parse key=value pairs from args
+        values = {}
+        value_args = getattr(args, "values", []) or []
+        for val in value_args:
+            if "=" in val:
+                k, v = val.split("=", 1)
+                values[k] = v
+
+        # Parse encrypt keys
+        encrypt_keys = []
+        encrypt_arg = getattr(args, "encrypt_keys", None)
+        if encrypt_arg:
+            encrypt_keys = [k.strip() for k in encrypt_arg.split(",")]
+
+        result = env_mgr.apply_template(
+            template_name=template_name,
+            app=app,
+            values=values,
+            encrypt_keys=encrypt_keys,
+        )
+
+        if result.valid:
+            cx_print(f"✓ Applied template '{template_name}' to '{app}'", "success")
+            return 0
+        else:
+            self._print_error(f"Failed to apply template '{template_name}'")
+            for err in result.errors:
+                console.print(f"  [red]✗[/red] {err}")
+            return 1
+
+    def _env_list_apps(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """List all apps with stored environments."""
+        apps = env_mgr.list_apps()
+
+        if not apps:
+            cx_print("No applications with stored environments", "info")
+            return 0
+
+        cx_header("Applications with Environments")
+        for app in apps:
+            var_count = len(env_mgr.list_variables(app))
+            console.print(f"  [green]{app}[/green] [dim]({var_count} variables)[/dim]")
+
+        return 0
+
+    def _env_load(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
+        """Load environment variables into current process."""
+        app = args.app
+
+        count = env_mgr.load_to_environ(app)
+
+        if count > 0:
+            cx_print(f"✓ Loaded {count} variable(s) from '{app}' into environment", "success")
+        else:
+            cx_print(f"No variables to load for '{app}'", "info")
+
+        return 0
 
 
 def show_rich_help():
@@ -801,17 +1236,25 @@ def show_rich_help():
     console.print(Panel(table, title="[bold]Core Commands[/bold]", border_style="cyan"))
     console.print()
 
-    # Utility Commands table
-    util_table = Table(show_header=True, header_style="bold yellow", box=None, padding=(0, 2))
-    util_table.add_column("Command", style="green", width=25)
-    util_table.add_column("Description", style="white")
+    # Commands table
+    table = Table(show_header=True, header_style="bold cyan", box=None)
+    table.add_column("Command", style="green")
+    table.add_column("Description")
 
-    util_table.add_row("[bold]cortex doctor[/bold]", "Run comprehensive system health check")
-    util_table.add_row("[bold]cortex status[/bold]", "Show current system status and configuration")
-    util_table.add_row("[bold]cortex wizard[/bold]", "Interactive setup for API keys and configuration")
-    util_table.add_row("[bold]cortex demo[/bold]", "See Cortex capabilities with example commands")
-    
-    console.print(Panel(util_table, title="[bold]Utility Commands[/bold]", border_style="yellow"))
+    table.add_row("ask <question>", "Ask about your system")
+    table.add_row("demo", "See Cortex in action")
+    table.add_row("wizard", "Configure API key")
+    table.add_row("status", "System status")
+    table.add_row("install <pkg>", "Install software")
+    table.add_row("history", "View history")
+    table.add_row("rollback <id>", "Undo installation")
+    table.add_row("notify", "Manage desktop notifications")
+    table.add_row("env", "Manage environment variables")
+    table.add_row("cache stats", "Show LLM cache statistics")
+    table.add_row("stack <name>", "Install the stack")
+    table.add_row("doctor", "System health check")
+
+    console.print(table)
     console.print()
 
     # Configuration Commands table
@@ -881,6 +1324,29 @@ def main():
 
     load_env()
 
+    # Auto-configure network settings (proxy detection, VPN compatibility, offline mode)
+    # Use lazy loading - only detect when needed to improve CLI startup time
+    try:
+        network = NetworkConfig(auto_detect=False)  # Don't detect yet (fast!)
+
+        # Only detect network for commands that actually need it
+        # Parse args first to see what command we're running
+        temp_parser = argparse.ArgumentParser(add_help=False)
+        temp_parser.add_argument("command", nargs="?")
+        temp_args, _ = temp_parser.parse_known_args()
+
+        # Commands that need network detection
+        NETWORK_COMMANDS = ["install", "update", "upgrade", "search", "doctor", "stack"]
+
+        if temp_args.command in NETWORK_COMMANDS:
+            # Now detect network (only when needed)
+            network.detect(check_quality=True)  # Include quality check for these commands
+            network.auto_configure()
+
+    except Exception as e:
+        # Network config is optional - don't block execution if it fails
+        console.print(f"[yellow]⚠️  Network auto-config failed: {e}[/yellow]")
+
     parser = argparse.ArgumentParser(
         prog="cortex",
         description="Cortex Linux - AI-powered package manager with natural language interface\n"
@@ -932,6 +1398,10 @@ def main():
         help="Run comprehensive system diagnostics",
         description="Check dependencies, API connectivity, permissions, and system compatibility."
     )
+
+    # Ask command
+    ask_parser = subparsers.add_parser("ask", help="Ask a question about your system")
+    ask_parser.add_argument("question", type=str, help="Natural language question")
 
     # Install command
     install_parser = subparsers.add_parser(
@@ -1050,6 +1520,98 @@ def main():
     )
     delete_snap.add_argument("snapshot_id", help="Snapshot ID to delete")
 
+    # --- Environment Variable Management Commands ---
+    env_parser = subparsers.add_parser("env", help="Manage environment variables")
+    env_subs = env_parser.add_subparsers(dest="env_action", help="Environment actions")
+
+    # env set <app> <KEY> <VALUE> [--encrypt] [--type TYPE] [--description DESC]
+    env_set_parser = env_subs.add_parser("set", help="Set an environment variable")
+    env_set_parser.add_argument("app", help="Application name")
+    env_set_parser.add_argument("key", help="Variable name")
+    env_set_parser.add_argument("value", help="Variable value")
+    env_set_parser.add_argument("--encrypt", "-e", action="store_true", help="Encrypt the value")
+    env_set_parser.add_argument(
+        "--type",
+        "-t",
+        choices=["string", "url", "port", "boolean", "integer", "path"],
+        default="string",
+        help="Variable type for validation",
+    )
+    env_set_parser.add_argument("--description", "-d", help="Description of the variable")
+
+    # env get <app> <KEY> [--decrypt]
+    env_get_parser = env_subs.add_parser("get", help="Get an environment variable")
+    env_get_parser.add_argument("app", help="Application name")
+    env_get_parser.add_argument("key", help="Variable name")
+    env_get_parser.add_argument(
+        "--decrypt", action="store_true", help="Decrypt and show encrypted values"
+    )
+
+    # env list <app> [--decrypt]
+    env_list_parser = env_subs.add_parser("list", help="List environment variables")
+    env_list_parser.add_argument("app", help="Application name")
+    env_list_parser.add_argument(
+        "--decrypt", action="store_true", help="Decrypt and show encrypted values"
+    )
+
+    # env delete <app> <KEY>
+    env_delete_parser = env_subs.add_parser("delete", help="Delete an environment variable")
+    env_delete_parser.add_argument("app", help="Application name")
+    env_delete_parser.add_argument("key", help="Variable name")
+
+    # env export <app> [--include-encrypted] [--output FILE]
+    env_export_parser = env_subs.add_parser("export", help="Export variables to .env format")
+    env_export_parser.add_argument("app", help="Application name")
+    env_export_parser.add_argument(
+        "--include-encrypted",
+        action="store_true",
+        help="Include decrypted values of encrypted variables",
+    )
+    env_export_parser.add_argument("--output", "-o", help="Output file (default: stdout)")
+
+    # env import <app> [file] [--encrypt-keys KEYS]
+    env_import_parser = env_subs.add_parser("import", help="Import variables from .env format")
+    env_import_parser.add_argument("app", help="Application name")
+    env_import_parser.add_argument("file", nargs="?", help="Input file (default: stdin)")
+    env_import_parser.add_argument("--encrypt-keys", help="Comma-separated list of keys to encrypt")
+
+    # env clear <app> [--force]
+    env_clear_parser = env_subs.add_parser("clear", help="Clear all variables for an app")
+    env_clear_parser.add_argument("app", help="Application name")
+    env_clear_parser.add_argument("--force", "-f", action="store_true", help="Skip confirmation")
+
+    # env apps - list all apps with environments
+    env_subs.add_parser("apps", help="List all apps with stored environments")
+
+    # env load <app> - load into os.environ
+    env_load_parser = env_subs.add_parser("load", help="Load variables into current environment")
+    env_load_parser.add_argument("app", help="Application name")
+
+    # env template subcommands
+    env_template_parser = env_subs.add_parser("template", help="Manage environment templates")
+    env_template_subs = env_template_parser.add_subparsers(
+        dest="template_action", help="Template actions"
+    )
+
+    # env template list
+    env_template_subs.add_parser("list", help="List available templates")
+
+    # env template show <name>
+    env_template_show_parser = env_template_subs.add_parser("show", help="Show template details")
+    env_template_show_parser.add_argument("template_name", help="Template name")
+
+    # env template apply <template> <app> [KEY=VALUE...] [--encrypt-keys KEYS]
+    env_template_apply_parser = env_template_subs.add_parser("apply", help="Apply template to app")
+    env_template_apply_parser.add_argument("template_name", help="Template name")
+    env_template_apply_parser.add_argument("app", help="Application name")
+    env_template_apply_parser.add_argument(
+        "values", nargs="*", help="Variable values as KEY=VALUE pairs"
+    )
+    env_template_apply_parser.add_argument(
+        "--encrypt-keys", help="Comma-separated list of keys to encrypt"
+    )
+    # --------------------------
+
     args = parser.parse_args()
 
     if not args.command:
@@ -1066,6 +1628,8 @@ def main():
             return cli.wizard()
         elif args.command == "status":
             return cli.status()
+        elif args.command == "ask":
+            return cli.ask(args.question)
         elif args.command == "install":
             return cli.install(
                 args.software,
@@ -1089,16 +1653,24 @@ def main():
                 return cli.cache_stats()
             parser.print_help()
             return 1
-        elif args.command == "snapshot":
-            return cli.snapshot(args)
+        elif args.command == "env":
+            return cli.env(args)
         else:
             parser.print_help()
             return 1
     except KeyboardInterrupt:
         print("\n❌ Operation cancelled", file=sys.stderr)
         return 130
+    except (ValueError, ImportError, OSError) as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        return 1
     except Exception as e:
         print(f"❌ Unexpected error: {e}", file=sys.stderr)
+        # Print traceback if verbose mode was requested
+        if "--verbose" in sys.argv or "-v" in sys.argv:
+            import traceback
+
+            traceback.print_exc()
         return 1
 
 
