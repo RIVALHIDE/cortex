@@ -3,7 +3,6 @@
 
 import subprocess
 import time
-from pathlib import Path
 
 def test_concurrent_snapshots():
     """Test creating snapshots concurrently"""
