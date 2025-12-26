@@ -48,8 +48,8 @@ class DependencyResolver:
 
         # Parse semantic version constraints
         try:
-            spec_a = semantic_version.SimpleSpec(version_a)
-            spec_b = semantic_version.SimpleSpec(version_b)
+            semantic_version.SimpleSpec(version_a)
+            semantic_version.SimpleSpec(version_b)
         except ValueError as e:
             # Invalid semver - return error strategy
             return [
