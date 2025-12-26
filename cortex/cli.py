@@ -13,11 +13,6 @@ from cortex.installation_history import InstallationHistory, InstallationStatus,
 from cortex.llm.interpreter import CommandInterpreter
 from cortex.notification_manager import NotificationManager
 from cortex.stack_manager import StackManager
-from cortex.user_preferences import (
-    PreferencesManager,
-    format_preference_value,
-    print_all_preferences,
-)
 from cortex.validators import (
     validate_api_key,
     validate_install_request,
@@ -34,7 +29,6 @@ class CortexCLI:
     def __init__(self, verbose: bool = False):
         self.spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         self.spinner_idx = 0
-        self.prefs_manager = None  # Lazy initialization
         self.verbose = verbose
         self.offline = False
 
@@ -626,84 +620,6 @@ class CortexCLI:
             self._print_error(f"Rollback failed: {str(e)}")
             return 1
 
-    def _get_prefs_manager(self):
-        """Lazy initialize preferences manager"""
-        if self.prefs_manager is None:
-            self.prefs_manager = PreferencesManager()
-        return self.prefs_manager
-
-    def check_pref(self, key: str | None = None):
-        """Check/display user preferences"""
-        manager = self._get_prefs_manager()
-
-        try:
-            if key:
-                # Show specific preference
-                value = manager.get(key)
-                if value is None:
-                    self._print_error(f"Preference key '{key}' not found")
-                    return 1
-
-                print(f"\n{key} = {format_preference_value(value)}")
-                return 0
-            else:
-                # Show all preferences
-                print_all_preferences(manager)
-                return 0
-
-        except Exception as e:
-            self._print_error(f"Failed to read preferences: {str(e)}")
-            return 1
-
-    def edit_pref(self, action: str, key: str | None = None, value: str | None = None):
-        """Edit user preferences (add/set, delete/remove, list)"""
-        manager = self._get_prefs_manager()
-
-        try:
-            if action in ["add", "set", "update"]:
-                if not key or not value:
-                    self._print_error("Key and value required")
-                    return 1
-                manager.set(key, value)
-                self._print_success(f"Updated {key}")
-                print(f"  New value: {format_preference_value(manager.get(key))}")
-                return 0
-
-            elif action in ["delete", "remove", "reset-key"]:
-                if not key:
-                    self._print_error("Key required")
-                    return 1
-                # Simplified reset logic
-                print(f"Resetting {key}...")
-                # (In a real implementation we would reset to default)
-                return 0
-
-            elif action in ["list", "show", "display"]:
-                return self.check_pref()
-
-            elif action == "reset-all":
-                confirm = input("⚠️  Reset ALL preferences? (y/n): ")
-                if confirm.lower() == "y":
-                    manager.reset()
-                    self._print_success("Preferences reset")
-                return 0
-
-            elif action == "validate":
-                errors = manager.validate()
-                if errors:
-                    print("❌ Errors found")
-                else:
-                    self._print_success("Valid")
-                return 0
-
-            else:
-                self._print_error(f"Unknown action: {action}")
-                return 1
-
-        except Exception as e:
-            self._print_error(f"Failed to edit preferences: {str(e)}")
-            return 1
-
     def status(self):
         """Show system status including security features"""
         import shutil
@@ -904,15 +820,6 @@ def show_rich_help():
     config_table.add_column("Description", style="white")
 
     config_table.add_row(
-        "[bold]cortex check-pref [key][/bold]",
-        "Check current preferences or specific key"
-    )
-    config_table.add_row(
-        "[bold]cortex edit-pref[/bold]",
-        "Modify preferences\n"
-        "[dim]Actions: set, add, delete, list, validate[/dim]"
-    )
-    config_table.add_row(
         "[bold]cortex notify[/bold]",
         "Manage desktop notifications\n"
         "[dim]Actions: config, enable, disable, dnd, send[/dim]"
@@ -1060,23 +967,6 @@ def main():
     rollback_parser.add_argument("id", help="Installation ID from history")
     rollback_parser.add_argument("--dry-run", action="store_true", help="Preview rollback actions without executing")
 
-    # Preferences commands
-    check_pref_parser = subparsers.add_parser(
-        "check-pref",
-        help="View current preferences",
-        description="Display all preferences or check a specific preference key."
-    )
-    check_pref_parser.add_argument("key", nargs="?", help="Optional: specific preference key to check")
-
-    edit_pref_parser = subparsers.add_parser(
-        "edit-pref",
-        help="Modify preferences",
-        description="Set, add, delete, or validate preference values."
-    )
-    edit_pref_parser.add_argument("action", choices=["set", "add", "delete", "list", "validate"], help="Action to perform")
-    edit_pref_parser.add_argument("key", nargs="?", help="Preference key (e.g., 'install.auto_confirm')")
-    edit_pref_parser.add_argument("value", nargs="?", help="New value for the preference")
-
     # --- New Notify Command ---
     notify_parser = subparsers.add_parser("notify", help="Manage desktop notifications")
     notify_subs = notify_parser.add_subparsers(dest="notify_action", help="Notify actions")
@@ -1187,10 +1077,6 @@ def main():
             return cli.history(limit=args.limit, status=args.status, show_id=args.show_id)
         elif args.command == "rollback":
             return cli.rollback(args.id, dry_run=args.dry_run)
-        elif args.command == "check-pref":
-            return cli.check_pref(key=args.key)
-        elif args.command == "edit-pref":
-            return cli.edit_pref(action=args.action, key=args.key, value=args.value)
         # Handle the new notify command
         elif args.command == "notify":
             return cli.notify(args)

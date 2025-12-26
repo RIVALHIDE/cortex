@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- `check-pref` command - User preferences are now internal-only (see docs/issues/USER_PREFERENCES_COMMANDS_REMOVAL.md)
+- `edit-pref` command - User preferences are now internal-only (see docs/issues/USER_PREFERENCES_COMMANDS_REMOVAL.md)
+
 ### Added
 - Comprehensive code assessment (ASSESSMENT.md)
 - Detailed improvement roadmap (ROADMAP.md)
