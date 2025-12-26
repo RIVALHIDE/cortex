@@ -86,10 +86,12 @@ class SnapshotManager:
         try:
             from cortex.user_preferences import PreferencesManager
             prefs_manager = PreferencesManager()
-            prefs = prefs_manager.get_preferences()
-            return prefs.snapshots.retention_limit
-        except Exception:
+            prefs_manager.load()
+            return prefs_manager.preferences.snapshots.retention_limit
+        except (AttributeError, IOError, OSError) as e:
             # Fall back to default if preferences not available
+            import logging
+            logging.debug(f"Could not load retention from preferences: {e}")
             return self.DEFAULT_RETENTION_LIMIT
 
     def _enforce_directory_security(self) -> None:

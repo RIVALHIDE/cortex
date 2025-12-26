@@ -46,10 +46,12 @@ class DependencyResolver:
         version_a = conflict_data.get("version_a", "*")
         version_b = conflict_data.get("version_b", "*")
 
-        # Parse semantic version constraints
+        # Parse semantic version constraints for validation
+        # TODO: Implement actual version intersection logic using spec_a & spec_b
+        # Currently only validating that version constraints are parseable
         try:
-            semantic_version.SimpleSpec(version_a)
-            semantic_version.SimpleSpec(version_b)
+            spec_a = semantic_version.SimpleSpec(version_a)
+            spec_b = semantic_version.SimpleSpec(version_b)
         except ValueError as e:
             # Invalid semver - return error strategy
             return [
@@ -68,8 +70,8 @@ class DependencyResolver:
                 }
             ]
 
-        # Find the intersection or highest compatible version
-        # For successful parsing, return two strategies
+        # TODO: Use computed intersection from above
+        # For now, return placeholder strategies after validation
         strategies = []
 
         # Strategy 1: Recommended "Smart Upgrade"

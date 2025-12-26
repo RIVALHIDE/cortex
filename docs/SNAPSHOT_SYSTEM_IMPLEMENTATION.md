@@ -405,7 +405,7 @@ cortex/
 
 tests/
 └── unit/
-    └── test_snapshot_manager.py  # 15 comprehensive tests (279 lines)
+    └── test_snapshot_manager.py  # 27 comprehensive tests (587 lines)
 ```
 
 ### Class Structure

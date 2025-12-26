@@ -41,15 +41,20 @@ def test_concurrent_snapshots():
     
     errors = []
     for r in results:
+        failed = False
         if r["code"] == 0:
             print(f"✅ Process {r['id']}: SUCCESS")
         else:
             print(f"❌ Process {r['id']}: FAILED (code {r['code']})")
-            errors.append(r)
+            failed = True
         
         # Check for JSON corruption
         if "Expecting property name" in r["stderr"] or "Expecting ',' delimiter" in r["stderr"]:
             print(f"   🚨 JSON CORRUPTION DETECTED!")
+            failed = True
+        
+        # Add to errors list only once per failed result
+        if failed:
             errors.append(r)
     
     print("\n" + "=" * 60)

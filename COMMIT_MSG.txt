@@ -18,7 +18,7 @@ file corruption with errors:
 4. **Graceful timeouts**: User-friendly messages on lock contention
 
 ## Changes
-- Added `filelock>=3.20.0` dependency to requirements.txt
+- Added `filelock>=3.20.1` dependency to requirements.txt
 - Added `_file_lock_path` and `_safe_read_json()` to SnapshotManager
 - Wrapped create/list/delete operations with FileLock contexts
 - Added FileLockTimeout exception handling
