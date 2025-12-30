@@ -681,6 +681,19 @@ class DockerSandbox:
             )
 
         try:
+            # Ensure host package lists are fresh before installing
+            update_cmd = ["sudo", "apt-get", "update", "-qq"]
+            try:
+                subprocess.run(
+                    update_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                )
+            except subprocess.TimeoutExpired:
+                # If update times out, continue to attempt install but surface warning
+                logger.warning("Host apt-get update timed out before promote/install")
+
             # Run apt install on the HOST (not in container)
             result = subprocess.run(
                 install_cmd,
@@ -697,9 +710,18 @@ class DockerSandbox:
                     packages_installed=[package],
                 )
             else:
+                # Provide a helpful hint when package cannot be located
+                hint = ""
+                combined_output = (result.stderr or "") + "\n" + (result.stdout or "")
+                if "Unable to locate package" in combined_output:
+                    hint = (
+                        "\nHint: run 'sudo apt-get update' on the host and retry, "
+                        "or check your APT sources/repositories."
+                    )
+
                 return SandboxExecutionResult(
                     success=False,
-                    message=f"Failed to install '{package}' on main system",
+                    message=f"Failed to install '{package}' on main system{hint}",
                     exit_code=result.returncode,
                     stderr=result.stderr,
                 )
@@ -726,8 +748,17 @@ class DockerSandbox:
 
         container_name = self._get_container_name(name)
 
+        # If metadata is missing, only allow cleanup when forced; otherwise report not found
+        info = self._load_metadata(name)
+        if not info and not force:
+            return SandboxExecutionResult(
+                success=False,
+                message=f"Sandbox '{name}' not found",
+                exit_code=1,
+            )
+
         try:
-            # Stop container if running
+            # Stop container if running (ignore errors)
             self._run_docker(["stop", container_name], timeout=30, check=False)
 
             # Remove container
@@ -736,9 +767,9 @@ class DockerSandbox:
                 rm_args.append("-f")
             rm_args.append(container_name)
 
-            result = self._run_docker(rm_args, timeout=30, check=False)
+            self._run_docker(rm_args, timeout=30, check=False)
 
-            # Delete metadata
+            # Delete metadata (if exists)
             self._delete_metadata(name)
 
             return SandboxExecutionResult(
