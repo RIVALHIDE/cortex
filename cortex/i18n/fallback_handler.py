@@ -124,7 +124,14 @@ class FallbackHandler:
         if output_path is None:
             # Use secure user-specific temporary directory
             # This avoids /tmp which is world-writable (security vulnerability)
-            temp_dir = Path(tempfile.gettempdir()) / f"cortex_{os.getuid()}"
+            # Use cross-platform approach for username
+            try:
+                username = os.getlogin()
+            except (OSError, AttributeError):
+                # Fallback if getlogin() fails or on systems without os.getlogin()
+                username = os.environ.get("USERNAME") or os.environ.get("USER") or "cortex_user"
+
+            temp_dir = Path(tempfile.gettempdir()) / f"cortex_{username}"
             temp_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
 
             filename = f"cortex_missing_translations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"

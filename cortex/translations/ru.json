@@ -18,13 +18,13 @@
     "required_field": "Поле {field} обязательно"
   },
   "cli": {
-    "help": "Display this help message",
-    "version": "Show version information",
-    "verbose": "Enable verbose output",
-    "quiet": "Suppress non-essential output",
-    "dry_run": "Preview changes without applying them",
-    "force": "Force execution without confirmation",
-    "output_format": "Output format (text, json, yaml)"
+    "help": "Отобразить справочную информацию",
+    "version": "Показать информацию о версии",
+    "verbose": "Включить подробный вывод",
+    "quiet": "Подавить несущественный вывод",
+    "dry_run": "Просмотреть изменения без их применения",
+    "force": "Принудить выполнение без подтверждения",
+    "output_format": "Формат вывода (text, json, yaml)"
   },
   "install": {
     "prompt": "Что вы хотите установить?",
@@ -42,32 +42,32 @@
     "requires": "Требует: {dependencies}"
   },
   "remove": {
-    "prompt": "What would you like to remove?",
-    "removing": "Removing {packages}...",
-    "success": "{package} removed successfully",
-    "failed": "Removal of {package} failed: {error}",
-    "not_installed": "{package} is not installed",
-    "dry_run": "[DRY RUN] Would remove {packages}",
-    "requires_confirmation": "This will remove {count} package(s). Continue?"
+    "prompt": "Что вы хотите удалить?",
+    "removing": "Удаление {packages}...",
+    "success": "{package} успешно удален",
+    "failed": "Ошибка удаления {package}: {error}",
+    "not_installed": "{package} не установлен",
+    "dry_run": "[DRY RUN] Удалил бы {packages}",
+    "requires_confirmation": "Это удалит {count, plural, one {# пакет} few {# пакета} other {# пакетов}}. Продолжить?"
   },
   "search": {
-    "prompt": "Search for packages",
-    "searching": "Searching for '{query}'...",
-    "found": "Found {count, plural, one {# package} other {# packages}}",
-    "not_found": "No packages found for '{query}'",
-    "results": "Search results for '{query}':",
-    "installed": "Installed",
-    "available": "Available",
-    "description": "Description",
-    "version": "Version"
+    "prompt": "Поиск пакетов",
+    "searching": "Поиск '{query}'...",
+    "found": "Найдено {count, plural, one {# пакет} few {# пакета} other {# пакетов}}",
+    "not_found": "Пакеты для '{query}' не найдены",
+    "results": "Результаты поиска для '{query}':",
+    "installed": "Установлено",
+    "available": "Доступно",
+    "description": "Описание",
+    "version": "Версия"
   },
   "config": {
     "language_set": "Язык установлен на {language}",
     "language_not_found": "Язык {language} не найден",
     "current_language": "Текущий язык: {language}",
     "available_languages": "Доступные языки: {languages}",
-    "saved": "Configuration saved",
-    "reset": "Configuration reset to defaults",
+    "saved": "Конфигурация сохранена",
+    "reset": "Конфигурация сброшена к значениям по умолчанию",
     "invalid_key": "Неверный ключ конфигурации: {key}",
     "invalid_value": "Неверное значение для {key}: {value}",
     "config_missing": "Файл конфигурации не найден",
@@ -75,35 +75,35 @@
   },
   "errors": {
     "network": "Ошибка сети: {error}",
-    "permission": "Permission denied: {details}",
+    "permission": "Доступ запрещен: {details}",
     "invalid_package": "Пакет '{package}' не найден",
     "disk_space": "Недостаточно свободного места на диске",
     "api_key_missing": "Ключ API не установлен. Установите его в конфигурации.",
     "timeout": "Истекло время ожидания {operation}",
-    "parse_error": "Failed to parse response: {details}",
+    "parse_error": "Ошибка при разборе ответа: {details}",
     "invalid_input": "Неверный ввод: {error}",
-    "operation_failed": "Operation failed: {details}",
-    "unexpected": "An unexpected error occurred. Please try again.",
+    "operation_failed": "Операция не выполнена: {details}",
+    "unexpected": "Произошла неожиданная ошибка. Пожалуйста, попробуйте снова.",
     "permission_denied": "Доступ запрещен",
     "package_conflict": "Конфликт пакета: {package}",
     "installation_failed": "Установка не удалась",
     "unknown_error": "Неизвестная ошибка"
   },
   "prompts": {
-    "confirm_install": "Install {packages}? (y/n)",
-    "confirm_remove": "Remove {packages}? (y/n)",
-    "select_version": "Select version for {package}:",
-    "enter_api_key": "Enter your {provider} API key:",
-    "confirm_dry_run": "This is a dry-run. Continue to see what would be done?"
+    "confirm_install": "Установить {packages}? (y/n)",
+    "confirm_remove": "Удалить {packages}? (y/n)",
+    "select_version": "Выберите версию для {package}:",
+    "enter_api_key": "Введите ваш ключ API {provider}:",
+    "confirm_dry_run": "Это пробный запуск. Продолжить, чтобы увидеть, что будет сделано?"
   },
   "status": {
-    "checking": "Checking system...",
-    "detected_os": "Detected OS: {os} {version}",
-    "detected_arch": "Architecture: {arch}",
-    "hardware_info": "CPU cores: {cores}, RAM: {ram}GB",
-    "checking_updates": "Checking for updates...",
-    "up_to_date": "System is up to date",
-    "updates_available": "{count, plural, one {# update} other {# updates}} available"
+    "checking": "Проверка системы...",
+    "detected_os": "Обнаружена ОС: {os} {version}",
+    "detected_arch": "Архитектура: {arch}",
+    "hardware_info": "Ядер процессора: {cores}, ОЗУ: {ram}GB",
+    "checking_updates": "Проверка обновлений...",
+    "up_to_date": "Система актуальна",
+    "updates_available": "Доступно {count, plural, one {# обновление} few {# обновления} other {# обновлений}}"
   },
   "wizard": {
     "welcome": "Welcome to Cortex Linux!",
