@@ -43,6 +43,32 @@ def _arabic_plural_rule(n: int) -> str:
         return "other"
 
 
+def _russian_plural_rule(n: int) -> str:
+    """
+    Russian pluralization rule (3 plural forms per CLDR standard).
+
+    Russian has distinct plural forms for:
+    - one: n % 10 == 1 and n % 100 != 11
+      Examples: 1, 21, 31, 41, 51, 61, 71, 81, 91, 101, 121...
+    - few: n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14)
+      Examples: 2, 3, 4, 22, 23, 24, 32, 33, 34...
+    - many: everything else (plural)
+      Examples: 0, 5-20, 25-30, 35-40, 100...
+
+    Args:
+        n: Count to pluralize
+
+    Returns:
+        Plural form key ('one', 'few', or 'many')
+    """
+    if n % 10 == 1 and n % 100 != 11:
+        return "one"
+    elif n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return "few"
+    else:
+        return "many"
+
+
 class PluralRules:
     """
     Defines pluralization rules for different languages.
@@ -71,10 +97,15 @@ class PluralRules:
         "en": lambda n: "one" if n == 1 else "other",
         "es": lambda n: "one" if n == 1 else "other",
         "fr": lambda n: "one" if n <= 1 else "other",
+        "de": lambda n: "one" if n == 1 else "other",
+        "it": lambda n: "one" if n == 1 else "other",
         "ja": lambda n: "other",  # Japanese doesn't distinguish
+        "zh": lambda n: "other",  # Chinese doesn't distinguish
+        "ko": lambda n: "other",  # Korean doesn't distinguish
         "ar": _arabic_plural_rule,
         "hi": lambda n: "one" if n == 1 else "other",
         "pt": lambda n: "one" if n == 1 else "other",
+        "ru": _russian_plural_rule,
     }
 
     @classmethod
@@ -146,7 +177,8 @@ RUSSIAN_RULES = {
         2: "few",
         5: "many",
         21: "one",
-        102: "many",
+        22: "few",
+        100: "many",
     },
 }
 
@@ -158,8 +190,8 @@ ARABIC_RULES = {
         1: "one",
         2: "two",
         5: "few",
-        100: "many",
-        1000: "other",
+        50: "many",
+        100: "other",
     },
 }
 
