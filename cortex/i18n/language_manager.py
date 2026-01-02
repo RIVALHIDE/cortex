@@ -11,7 +11,6 @@ License: Apache 2.0
 import locale
 import logging
 import os
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
