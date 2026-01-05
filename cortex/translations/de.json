@@ -31,7 +31,7 @@
     "checking_deps": "Abhängigkeiten für {package} werden überprüft",
     "resolving": "Paketabhängigkeiten werden aufgelöst...",
     "downloading": "Lädt {package_count, plural, one {# Paket} other {# Pakete}} herunter",
-    "installing": "{packages} wird installiert...",
+    "installing": "{package} wird installiert...",
     "success": "{package} erfolgreich installiert",
     "failed": "Installation von {package} fehlgeschlagen: {error}",
     "dry_run": "[DRY RUN] Würde {packages} installieren",

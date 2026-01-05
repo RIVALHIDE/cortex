@@ -31,7 +31,7 @@
     "checking_deps": "正在检查 {package} 的依赖关系",
     "resolving": "正在解析软件包依赖关系...",
     "downloading": "正在下载 {package_count, plural, one {# 个软件包} other {# 个软件包}}",
-    "installing": "正在安装 {packages}...",
+    "installing": "正在安装 {package}...",
     "success": "{package} 安装成功",
     "failed": "{package} 安装失败：{error}",
     "dry_run": "[DRY RUN] 将安装 {packages}",

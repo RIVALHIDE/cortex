@@ -30,7 +30,7 @@
     "checking_deps": "{package} の依存関係を確認中",
     "resolving": "パッケージの依存関係を解決中...",
     "downloading": "{package_count, plural, one {# パッケージ} other {# パッケージ}}をダウンロード中",
-    "installing": "{packages} をインストール中...",
+    "installing": "{package} をインストール中...",
     "success": "{package} が正常にインストールされました",
     "failed": "{package} のインストールに失敗しました: {error}",
     "dry_run": "[ドライラン] {packages} がインストールされます",
