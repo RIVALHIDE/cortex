@@ -39,13 +39,14 @@ class CortexCLI:
         self.spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         self.spinner_idx = 0
         self.verbose = verbose
-        
+
         # Initialize language manager and translator
         self.lang_manager = LanguageManager()
         detected_language = language or self.lang_manager.detect_language()
         from cortex.i18n import get_translator
+
         self.translator = get_translator(detected_language)
-    
+
     def t(self, key: str, **kwargs) -> str:
         """Shortcut for translator.get()"""
         return self.translator.get(key, **kwargs)
@@ -522,10 +523,18 @@ class CortexCLI:
 
     def _sandbox_promote(self, sandbox, args: argparse.Namespace) -> int:
         """Promote a tested package to main system."""
+        from cortex.validators import validate_package_name
+
         name = args.name
         package = args.package
         dry_run = getattr(args, "dry_run", False)
         skip_confirm = getattr(args, "yes", False)
+
+        # Validate package name before passing to system commands
+        is_valid, error = validate_package_name(package)
+        if not is_valid:
+            self._print_error(f"Invalid package name: {error}")
+            return 1
 
         if dry_run:
             result = sandbox.promote(name, package, dry_run=True)
