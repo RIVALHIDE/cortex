@@ -27,8 +27,8 @@ Welcome! This guide helps you contribute translations to Cortex Linux.
 | ko | 한국어 | Complete ✓ |
 | ru | Русский | Complete ✓ |
 | zh | 中文 | Complete ✓ |
-| pt | Português | Not started |
-| fr | Français | Not started |
+| pt | Português | Complete ✓ |
+| fr | Français | Complete ✓ |
 
 ## Translation File Structure
 
