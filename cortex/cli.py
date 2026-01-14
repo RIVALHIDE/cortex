@@ -19,6 +19,13 @@ from cortex.dependency_importer import (
     format_package_list,
 )
 from cortex.env_manager import EnvironmentManager, get_env_manager
+from cortex.i18n import (
+    SUPPORTED_LANGUAGES,
+    LanguageConfig,
+    get_language,
+    set_language,
+    t,
+)
 from cortex.installation_history import InstallationHistory, InstallationStatus, InstallationType
 from cortex.llm.interpreter import CommandInterpreter
 from cortex.network_config import NetworkConfig
@@ -144,9 +151,9 @@ class CortexCLI:
             return key
 
         # Still no key
-        self._print_error("No API key found or provided")
-        cx_print("Run [bold]cortex wizard[/bold] to configure your API key.", "info")
-        cx_print("Or use [bold]CORTEX_PROVIDER=ollama[/bold] for offline mode.", "info")
+        self._print_error(t("api_key.not_found"))
+        cx_print(t("api_key.configure_prompt"), "info")
+        cx_print(t("api_key.ollama_hint"), "info")
         return None
 
     def _get_provider(self) -> str:
@@ -307,21 +314,21 @@ class CortexCLI:
     def _handle_stack_list(self, manager: StackManager) -> int:
         """List all available stacks."""
         stacks = manager.list_stacks()
-        cx_print("\n📦 Available Stacks:\n", "info")
+        cx_print(f"\n📦 {t('stack.available')}:\n", "info")
         for stack in stacks:
             pkg_count = len(stack.get("packages", []))
             console.print(f"  [green]{stack.get('id', 'unknown')}[/green]")
             console.print(f"    {stack.get('name', 'Unnamed Stack')}")
             console.print(f"    {stack.get('description', 'No description')}")
             console.print(f"    [dim]({pkg_count} packages)[/dim]\n")
-        cx_print("Use: cortex stack <name> to install a stack", "info")
+        cx_print(t("stack.use_command"), "info")
         return 0
 
     def _handle_stack_describe(self, manager: StackManager, stack_id: str) -> int:
         """Describe a specific stack."""
         stack = manager.find_stack(stack_id)
         if not stack:
-            self._print_error(f"Stack '{stack_id}' not found. Use --list to see available stacks.")
+            self._print_error(t("stack.not_found", name=stack_id))
             return 1
         description = manager.describe_stack(stack_id)
         console.print(description)
@@ -334,20 +341,18 @@ class CortexCLI:
 
         if suggested_name != original_name:
             cx_print(
-                f"💡 No GPU detected, using '{suggested_name}' instead of '{original_name}'",
+                f"💡 {t('stack.gpu_fallback', original=original_name, suggested=suggested_name)}",
                 "info",
             )
 
         stack = manager.find_stack(suggested_name)
         if not stack:
-            self._print_error(
-                f"Stack '{suggested_name}' not found. Use --list to see available stacks."
-            )
+            self._print_error(t("stack.not_found", name=suggested_name))
             return 1
 
         packages = stack.get("packages", [])
         if not packages:
-            self._print_error(f"Stack '{suggested_name}' has no packages configured.")
+            self._print_error(t("stack.no_packages", name=suggested_name))
             return 1
 
         if args.dry_run:
@@ -357,28 +362,28 @@ class CortexCLI:
 
     def _handle_stack_dry_run(self, stack: dict[str, Any], packages: list[str]) -> int:
         """Preview packages that would be installed without executing."""
-        cx_print(f"\n📋 Stack: {stack['name']}", "info")
-        console.print("\nPackages that would be installed:")
+        cx_print(f"\n📋 {t('stack.installing', name=stack['name'])}", "info")
+        console.print(f"\n{t('stack.dry_run_preview')}:")
         for pkg in packages:
             console.print(f"  • {pkg}")
-        console.print(f"\nTotal: {len(packages)} packages")
-        cx_print("\nDry run only - no commands executed", "warning")
+        console.print(f"\n{t('stack.packages_total', count=len(packages))}")
+        cx_print(f"\n{t('stack.dry_run_note')}", "warning")
         return 0
 
     def _handle_stack_real_install(self, stack: dict[str, Any], packages: list[str]) -> int:
         """Install all packages in the stack."""
-        cx_print(f"\n🚀 Installing stack: {stack['name']}\n", "success")
+        cx_print(f"\n🚀 {t('stack.installing', name=stack['name'])}\n", "success")
 
         # Batch into a single LLM request
         packages_str = " ".join(packages)
         result = self.install(software=packages_str, execute=True, dry_run=False)
 
         if result != 0:
-            self._print_error(f"Failed to install stack '{stack['name']}'")
+            self._print_error(t("stack.failed", name=stack["name"]))
             return 1
 
-        self._print_success(f"\n✅ Stack '{stack['name']}' installed successfully!")
-        console.print(f"Installed {len(packages)} packages")
+        self._print_success(f"\n✅ {t('stack.installed', name=stack['name'])}")
+        console.print(t("stack.packages_installed", count=len(packages)))
         return 0
 
     # --- Sandbox Commands (Docker-based package testing) ---
@@ -395,9 +400,9 @@ class CortexCLI:
         action = getattr(args, "sandbox_action", None)
 
         if not action:
-            cx_print("\n🐳 Docker Sandbox - Test packages safely before installing\n", "info")
-            console.print("Usage: cortex sandbox <command> [options]")
-            console.print("\nCommands:")
+            cx_print(f"\n🐳 {t('sandbox.header')}\n", "info")
+            console.print(t("sandbox.usage"))
+            console.print(f"\n{t('sandbox.commands_header')}:")
             console.print("  create <name>              Create a sandbox environment")
             console.print("  install <name> <package>   Install package in sandbox")
             console.print("  test <name> [package]      Run tests in sandbox")
@@ -405,7 +410,7 @@ class CortexCLI:
             console.print("  cleanup <name>             Remove sandbox environment")
             console.print("  list                       List all sandboxes")
             console.print("  exec <name> <cmd...>       Execute command in sandbox")
-            console.print("\nExample workflow:")
+            console.print(f"\n{t('sandbox.example_workflow')}:")
             console.print("  cortex sandbox create test-env")
             console.print("  cortex sandbox install test-env nginx")
             console.print("  cortex sandbox test test-env")
@@ -672,22 +677,20 @@ class CortexCLI:
         start_time = datetime.now()
 
         try:
-            self._print_status("🧠", "Understanding request...")
+            self._print_status("🧠", t("install.analyzing"))
 
             interpreter = CommandInterpreter(api_key=api_key, provider=provider)
 
-            self._print_status("📦", "Planning installation...")
+            self._print_status("📦", t("install.planning"))
 
             for _ in range(10):
-                self._animate_spinner("Analyzing system requirements...")
+                self._animate_spinner(t("progress.analyzing_requirements"))
             self._clear_line()
 
             commands = interpreter.parse(f"install {software}")
 
             if not commands:
-                self._print_error(
-                    "No commands generated. Please try again with a different request."
-                )
+                self._print_error(t("install.no_commands"))
                 return 1
 
             # Extract packages from commands for tracking
@@ -699,13 +702,13 @@ class CortexCLI:
                     InstallationType.INSTALL, packages, commands, start_time
                 )
 
-            self._print_status("⚙️", f"Installing {software}...")
-            print("\nGenerated commands:")
+            self._print_status("⚙️", t("install.executing"))
+            print(f"\n{t('install.commands_would_run')}:")
             for i, cmd in enumerate(commands, 1):
                 print(f"  {i}. {cmd}")
 
             if dry_run:
-                print("\n(Dry run mode - commands not executed)")
+                print(f"\n({t('install.dry_run_message')})")
                 if install_id:
                     history.update_installation(install_id, InstallationStatus.SUCCESS)
                 return 0
@@ -721,7 +724,7 @@ class CortexCLI:
                     print(f"\n[{current}/{total}] {status_emoji} {step.description}")
                     print(f"  Command: {step.command}")
 
-                print("\nExecuting commands...")
+                print(f"\n{t('install.executing')}...")
 
                 if parallel:
                     import asyncio
@@ -761,8 +764,10 @@ class CortexCLI:
                                 total_duration = max_end - min_start
 
                         if success:
-                            self._print_success(f"{software} installed successfully!")
-                            print(f"\nCompleted in {total_duration:.2f} seconds (parallel mode)")
+                            self._print_success(t("install.package_installed", package=software))
+                            print(
+                                f"\n{t('progress.completed_in', seconds=f'{total_duration:.2f}')}"
+                            )
 
                             if install_id:
                                 history.update_installation(install_id, InstallationStatus.SUCCESS)
@@ -783,9 +788,9 @@ class CortexCLI:
                                 error_msg,
                             )
 
-                        self._print_error("Installation failed")
+                        self._print_error(t("install.failed"))
                         if error_msg:
-                            print(f"  Error: {error_msg}", file=sys.stderr)
+                            print(f"  {t('common.error')}: {error_msg}", file=sys.stderr)
                         if install_id:
                             print(f"\n📝 Installation recorded (ID: {install_id})")
                             print(f"   View details: cortex history {install_id}")
@@ -821,8 +826,8 @@ class CortexCLI:
                 result = coordinator.execute()
 
                 if result.success:
-                    self._print_success(f"{software} installed successfully!")
-                    print(f"\nCompleted in {result.total_duration:.2f} seconds")
+                    self._print_success(t("install.package_installed", package=software))
+                    print(f"\n{t('progress.completed_in', seconds=f'{result.total_duration:.2f}')}")
 
                     # Record successful installation
                     if install_id:
@@ -904,6 +909,134 @@ class CortexCLI:
 
                 traceback.print_exc()
             return 1
+
+    def config(self, args: argparse.Namespace) -> int:
+        """Handle configuration commands including language settings."""
+        action = getattr(args, "config_action", None)
+
+        if not action:
+            cx_print(t("config.missing_subcommand"), "error")
+            return 1
+
+        if action == "language":
+            return self._config_language(args)
+        elif action == "show":
+            return self._config_show()
+        else:
+            self._print_error(t("config.unknown_action", action=action))
+            return 1
+
+    def _config_language(self, args: argparse.Namespace) -> int:
+        """Handle language configuration."""
+        lang_config = LanguageConfig()
+
+        # List available languages
+        if getattr(args, "list", False):
+            cx_header(t("language.available"))
+            for code, info in SUPPORTED_LANGUAGES.items():
+                current_marker = " ✓" if code == get_language() else ""
+                console.print(
+                    f"  [green]{code}[/green] - {info['name']} ({info['native']}){current_marker}"
+                )
+            return 0
+
+        # Show language info
+        if getattr(args, "info", False):
+            info = lang_config.get_language_info()
+            cx_header(t("language.current"))
+            console.print(f"  [bold]{info['name']}[/bold] ({info['native_name']})")
+            console.print(f"  [dim]Code: {info['language']}[/dim]")
+            console.print(f"  [dim]Source: {info['source']}[/dim]")
+
+            if info.get("env_override"):
+                console.print(f"  [dim]Environment override: {info['env_override']}[/dim]")
+            if info.get("detected_language"):
+                console.print(f"  [dim]OS detected: {info['detected_language']}[/dim]")
+            return 0
+
+        # Set language
+        code = getattr(args, "code", None)
+        if not code:
+            # No code provided, show current language and list
+            current = get_language()
+            current_info = SUPPORTED_LANGUAGES.get(current, {})
+            cx_print(
+                f"{t('language.current')}: {current_info.get('name', current)} "
+                f"({current_info.get('native', '')})",
+                "info",
+            )
+            console.print()
+            console.print(
+                f"[dim]{t('language.supported_codes')}: {', '.join(SUPPORTED_LANGUAGES.keys())}[/dim]"
+            )
+            console.print("[dim]Use: cortex config language <code> to change[/dim]")
+            console.print("[dim]Use: cortex config language --list for details[/dim]")
+            return 0
+
+        # Handle 'auto' to clear saved preference
+        if code.lower() == "auto":
+            lang_config.clear_language()
+            from cortex.i18n.translator import reset_translator
+
+            reset_translator()
+            new_lang = get_language()
+            new_info = SUPPORTED_LANGUAGES.get(new_lang, {})
+            cx_print(t("language.changed", language=new_info.get("native", new_lang)), "success")
+            console.print(f"[dim]({t('language.auto_detected')})[/dim]")
+            return 0
+
+        # Validate and set language
+        code = code.lower()
+        if code not in SUPPORTED_LANGUAGES:
+            self._print_error(t("language.invalid_code", code=code))
+            console.print(
+                f"[dim]{t('language.supported_codes')}: {', '.join(SUPPORTED_LANGUAGES.keys())}[/dim]"
+            )
+            return 1
+
+        try:
+            lang_config.set_language(code)
+            # Reset the global translator to pick up the new language
+            from cortex.i18n.translator import reset_translator
+
+            reset_translator()
+            set_language(code)
+
+            lang_info = SUPPORTED_LANGUAGES[code]
+            cx_print(t("language.changed", language=lang_info["native"]), "success")
+            return 0
+        except Exception as e:
+            self._print_error(f"Failed to set language: {e}")
+            return 1
+
+    def _config_show(self) -> int:
+        """Show all current configuration."""
+        cx_header("Cortex Configuration")
+
+        # Language
+        lang_config = LanguageConfig()
+        lang_info = lang_config.get_language_info()
+        console.print("[bold]Language:[/bold]")
+        console.print(
+            f"  {lang_info['name']} ({lang_info['native_name']}) "
+            f"[dim][{lang_info['language']}][/dim]"
+        )
+        console.print(f"  [dim]Source: {lang_info['source']}[/dim]")
+        console.print()
+
+        # API Provider
+        provider = self._get_provider()
+        console.print("[bold]LLM Provider:[/bold]")
+        console.print(f"  {provider}")
+        console.print()
+
+        # Config paths
+        console.print("[bold]Config Paths:[/bold]")
+        console.print("  Preferences: ~/.cortex/preferences.yaml")
+        console.print("  History: ~/.cortex/history.db")
+        console.print()
+
+        return 0
 
     def history(self, limit: int = 20, status: str | None = None, show_id: str | None = None):
         """Show installation history"""
@@ -2004,6 +2137,88 @@ class CortexCLI:
     # --------------------------
 
 
+def _resolve_language_name(name: str) -> str | None:
+    """
+    Resolve a language name or code to a supported language code.
+
+    Accepts:
+    - Language codes: en, es, fr, de, zh
+    - English names: English, Spanish, French, German, Chinese
+    - Native names: Español, Français, Deutsch, 中文
+
+    Args:
+        name: Language name or code (case-insensitive for Latin scripts)
+
+    Returns:
+        Language code if found, None otherwise
+    """
+    # Normalize input (lowercase for comparison, but keep original for native names)
+    name_lower = name.lower().strip()
+
+    # Direct code match
+    if name_lower in SUPPORTED_LANGUAGES:
+        return name_lower
+
+    # Build lookup tables for names
+    name_to_code = {}
+    for code, info in SUPPORTED_LANGUAGES.items():
+        # English names (case-insensitive)
+        name_to_code[info["name"].lower()] = code
+        # Native names (exact match for non-Latin scripts, case-insensitive for Latin)
+        native = info["native"]
+        name_to_code[native.lower()] = code
+        name_to_code[native] = code  # Also exact match
+
+    # Try to find a match
+    if name_lower in name_to_code:
+        return name_to_code[name_lower]
+    if name in name_to_code:
+        return name_to_code[name]
+
+    return None
+
+
+def _handle_set_language(language_input: str) -> int:
+    """
+    Handle the --set-language global flag.
+
+    Args:
+        language_input: Language name or code from user
+
+    Returns:
+        Exit code (0 for success, 1 for error)
+    """
+    # Resolve the language name to a code
+    lang_code = _resolve_language_name(language_input)
+
+    if not lang_code:
+        # Show error with available options
+        cx_print(t("language.invalid_code", code=language_input), "error")
+        console.print()
+        console.print("[bold]Supported languages:[/bold]")
+        for code, info in SUPPORTED_LANGUAGES.items():
+            console.print(f"  • {info['name']} ({info['native']}) - code: [green]{code}[/green]")
+        return 1
+
+    # Set the language
+    try:
+        lang_config = LanguageConfig()
+        lang_config.set_language(lang_code)
+
+        # Reset and update global translator
+        from cortex.i18n.translator import reset_translator
+
+        reset_translator()
+        set_language(lang_code)
+
+        lang_info = SUPPORTED_LANGUAGES[lang_code]
+        cx_print(t("language.changed", language=lang_info["native"]), "success")
+        return 0
+    except Exception as e:
+        cx_print(f"Failed to set language: {e}", "error")
+        return 1
+
+
 def show_rich_help():
     """Display a beautifully formatted help table using the Rich library.
 
@@ -2102,6 +2317,13 @@ def main():
     # Global flags
     parser.add_argument("--version", "-V", action="version", version=f"cortex {VERSION}")
     parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed output")
+    parser.add_argument(
+        "--set-language",
+        "--language",
+        dest="set_language",
+        metavar="LANG",
+        help="Set display language (e.g., English, Spanish, Español, es, zh)",
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -2219,6 +2441,27 @@ def main():
     cache_parser = subparsers.add_parser("cache", help="Cache operations")
     cache_subs = cache_parser.add_subparsers(dest="cache_action", help="Cache actions")
     cache_subs.add_parser("stats", help="Show cache statistics")
+
+    # --- Config commands (including language settings) ---
+    config_parser = subparsers.add_parser("config", help="Configure Cortex settings")
+    config_subs = config_parser.add_subparsers(dest="config_action", help="Configuration actions")
+
+    # config language <code> - set language
+    config_lang_parser = config_subs.add_parser("language", help="Set display language")
+    config_lang_parser.add_argument(
+        "code",
+        nargs="?",
+        help="Language code (en, es, fr, de, zh) or 'auto' for auto-detection",
+    )
+    config_lang_parser.add_argument(
+        "--list", "-l", action="store_true", help="List available languages"
+    )
+    config_lang_parser.add_argument(
+        "--info", "-i", action="store_true", help="Show current language configuration"
+    )
+
+    # config show - show all configuration
+    config_subs.add_parser("show", help="Show all current configuration")
 
     # --- Sandbox Commands (Docker-based package testing) ---
     sandbox_parser = subparsers.add_parser(
@@ -2480,6 +2723,18 @@ def main():
 
     args = parser.parse_args()
 
+    # Handle --set-language global flag first (before any command)
+    if getattr(args, "set_language", None):
+        result = _handle_set_language(args.set_language)
+        # Only return early if no command is specified
+        # This allows: cortex --set-language es install nginx
+        if not args.command:
+            return result
+        # If language setting failed, still return the error
+        if result != 0:
+            return result
+        # Otherwise continue with the command execution
+
     # The Guard: Check for empty commands before starting the CLI
     if not args.command:
         show_rich_help()
@@ -2531,6 +2786,8 @@ def main():
             return 1
         elif args.command == "env":
             return cli.env(args)
+        elif args.command == "config":
+            return cli.config(args)
         else:
             parser.print_help()
             return 1

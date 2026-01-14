@@ -1,0 +1,307 @@
+# French (fr) - Français
+# Catalogue de messages Cortex Linux CLI
+#
+# Traduction française des messages CLI.
+# Fichier source: en.yaml
+
+# =============================================================================
+# Messages communs
+# =============================================================================
+common:
+  success: "Succès"
+  error: "Erreur"
+  warning: "Avertissement"
+  info: "Information"
+  yes: "oui"
+  no: "non"
+  cancel: "Annuler"
+  confirm: "Confirmer"
+  done: "Terminé"
+  failed: "Échoué"
+  loading: "Chargement..."
+  processing: "Traitement..."
+  please_wait: "Veuillez patienter..."
+  operation_cancelled: "Opération annulée"
+  unknown_error: "Une erreur inconnue s'est produite"
+  action_completed: "{action} terminé avec succès"
+  action_failed: "{action} a échoué: {error}"
+
+# =============================================================================
+# Configuration de la langue
+# =============================================================================
+language:
+  changed: "Langue changée en {language}"
+  current: "Langue actuelle"
+  auto_detected: "Détectée automatiquement du système"
+  set_from_env: "Définie depuis la variable d'environnement CORTEX_LANGUAGE"
+  set_from_config: "Définie depuis le fichier de configuration"
+  default: "Par défaut"
+  available: "Langues disponibles"
+  invalid_code: "Code de langue invalide: {code}"
+  supported_codes: "Codes de langue supportés"
+  select_prompt: "Sélectionnez une langue"
+  switched_to: "Changé en {language}"
+  
+# =============================================================================
+# Commandes CLI
+# =============================================================================
+cli:
+  description: "Interpréteur de commandes Linux alimenté par l'IA"
+  help_text: "Gestionnaire de paquets IA pour Linux"
+  tagline: "Dites simplement à Cortex ce que vous voulez installer."
+  learn_more: "En savoir plus"
+  
+  commands:
+    ask: "Poser une question sur votre système"
+    demo: "Voir Cortex en action"
+    wizard: "Configurer la clé API interactivement"
+    status: "Afficher l'état complet du système"
+    install: "Installer un logiciel"
+    import: "Importer des dépendances depuis des fichiers"
+    history: "Voir l'historique d'installation"
+    rollback: "Annuler une installation"
+    notify: "Gérer les notifications bureau"
+    env: "Gérer les variables d'environnement"
+    cache: "Afficher les statistiques du cache LLM"
+    stack: "Installer une pile prédéfinie"
+    docker: "Utilitaires Docker et conteneurs"
+    sandbox: "Tester des paquets dans le sandbox Docker"
+    doctor: "Vérification de santé du système"
+    config: "Configurer les paramètres Cortex"
+  
+  args:
+    software: "Logiciel à installer"
+    question: "Question en langage naturel"
+    execute: "Exécuter les commandes"
+    dry_run: "Afficher les commandes uniquement (ne pas exécuter)"
+    parallel: "Activer l'exécution parallèle"
+    verbose: "Afficher la sortie détaillée"
+    yes: "Passer les confirmations"
+
+# =============================================================================
+# Commande config
+# =============================================================================
+config:
+  missing_subcommand: "Veuillez spécifier une sous-commande (language/show)"
+  unknown_action: "Action de configuration inconnue: {action}"
+    
+# =============================================================================
+# Installation
+# =============================================================================
+install:
+  analyzing: "Analyse du système..."
+  planning: "Planification de l'installation..."
+  executing: "Exécution de l'installation..."
+  verifying: "Vérification de l'installation..."
+  
+  success: "Installation terminée!"
+  failed: "Échec de l'installation"
+  package_installed: "{package} installé avec succès"
+  package_installed_version: "{package} ({version}) installé avec succès"
+  packages_installed: "{count} paquets installés"
+  
+  dry_run_header: "Résultats de la simulation"
+  dry_run_message: "Simulation terminée. Utilisez --execute pour appliquer les changements."
+  commands_would_run: "Commandes qui seraient exécutées"
+  
+  step_progress: "Étape {current}/{total}"
+  step_executing: "Exécution de l'étape {step}: {description}"
+  step_completed: "Étape terminée"
+  step_failed: "Étape échouée"
+  
+  no_commands: "Aucune commande générée"
+  invalid_request: "Demande d'installation invalide"
+  api_error: "Erreur API: {error}"
+  package_not_found: "Paquet non trouvé: {package}"
+  
+  confirm_install: "Procéder à l'installation?"
+  confirm_install_count: "Installer {count} paquets?"
+  
+# =============================================================================
+# Gestion des piles
+# =============================================================================
+stack:
+  available: "Piles Disponibles"
+  not_found: "Pile '{name}' non trouvée. Utilisez --list pour voir les piles disponibles."
+  no_packages: "La pile '{name}' n'a pas de paquets configurés."
+  installing: "Installation de la pile: {name}"
+  installed: "Pile '{name}' installée avec succès!"
+  failed: "Échec de l'installation de la pile '{name}'"
+  packages_installed: "{count} paquets installés"
+  packages_total: "Total: {count} paquets"
+  dry_run_preview: "Paquets qui seraient installés"
+  dry_run_note: "Simulation uniquement - aucune commande exécutée"
+  use_command: "Utilisez: cortex stack <nom> pour installer une pile"
+  gpu_fallback: "GPU non détecté, utilisation de '{suggested}' au lieu de '{original}'"
+  
+# =============================================================================
+# Sandbox
+# =============================================================================
+sandbox:
+  header: "Sandbox Docker - Testez les paquets en sécurité avant installation"
+  usage: "Usage: cortex sandbox <commande> [options]"
+  commands_header: "Commandes"
+  example_workflow: "Exemple de flux de travail"
+  
+  creating: "Création du sandbox '{name}'..."
+  created: "Environnement sandbox '{name}' créé"
+  installing: "Installation de '{package}' dans le sandbox '{name}'..."
+  installed_in_sandbox: "{package} installé dans le sandbox"
+  testing: "Exécution des tests dans le sandbox '{name}'..."
+  cleaning: "Suppression du sandbox '{name}'..."
+  cleaned: "Sandbox '{name}' supprimé"
+  
+  test_passed: "Test réussi"
+  test_failed: "Test échoué"
+  tests_summary: "{passed}/{total} tests réussis"
+  
+  docker_required: "Docker est requis pour les commandes sandbox"
+  not_found: "Sandbox non trouvé"
+  already_exists: "Le sandbox existe déjà"
+  
+# =============================================================================
+# Historique
+# =============================================================================
+history:
+  title: "Historique d'Installation"
+  empty: "Aucun historique d'installation trouvé"
+  id: "ID"
+  date: "Date"
+  action: "Action"
+  packages: "Paquets"
+  status: "Statut"
+  
+  status_success: "Succès"
+  status_failed: "Échoué"
+  status_rolled_back: "Annulé"
+  
+  details_for: "Détails de l'installation #{id}"
+  
+# =============================================================================
+# Annulation
+# =============================================================================
+rollback:
+  rolling_back: "Annulation de l'installation #{id}..."
+  success: "Annulation terminée avec succès"
+  failed: "Échec de l'annulation"
+  not_found: "Installation #{id} non trouvée"
+  already_rolled_back: "L'installation #{id} a déjà été annulée"
+  confirm: "Êtes-vous sûr de vouloir annuler cette installation?"
+  
+# =============================================================================
+# Doctor / Vérification de santé
+# =============================================================================
+doctor:
+  running: "Exécution des vérifications de santé du système..."
+  checks_complete: "{count} vérifications terminées"
+  all_passed: "Toutes les vérifications réussies!"
+  issues_found: "{count} problèmes trouvés"
+  
+  check_api_key: "Configuration de la Clé API"
+  check_network: "Connectivité Réseau"
+  check_disk_space: "Espace Disque"
+  check_permissions: "Permissions de Fichiers"
+  check_dependencies: "Dépendances Système"
+  
+  passed: "Réussi"
+  warning: "Avertissement"
+  failed: "Échoué"
+  
+# =============================================================================
+# Assistant
+# =============================================================================
+wizard:
+  welcome: "Bienvenue dans l'Assistant de Configuration Cortex!"
+  step: "Étape {step} sur {total}"
+  
+  api_key_prompt: "Entrez votre clé API"
+  api_key_saved: "Clé API enregistrée avec succès"
+  api_key_invalid: "Format de clé API invalide"
+  
+  select_provider: "Sélectionnez votre fournisseur LLM"
+  provider_anthropic: "Anthropic (Claude)"
+  provider_openai: "OpenAI (GPT)"
+  provider_ollama: "Ollama (Local)"
+  
+  setup_complete: "Configuration terminée!"
+  ready_message: "Cortex est prêt à utiliser"
+  
+# =============================================================================
+# Notifications
+# =============================================================================
+notify:
+  config_header: "Configuration Actuelle des Notifications"
+  status: "Statut"
+  enabled: "Activé"
+  disabled: "Désactivé"
+  dnd_window: "Fenêtre Ne Pas Déranger"
+  history_file: "Fichier d'Historique"
+  
+  notifications_enabled: "Notifications activées"
+  notifications_disabled: "Notifications désactivées (Les alertes critiques seront toujours affichées)"
+  dnd_updated: "Fenêtre NPD mise à jour: {start} - {end}"
+  
+  missing_subcommand: "Veuillez spécifier une sous-commande (config/enable/disable/dnd/send)"
+  invalid_time_format: "Format d'heure invalide. Utilisez HH:MM (ex., 22:00)"
+  message_required: "Message requis"
+  
+# =============================================================================
+# Gestion de l'environnement
+# =============================================================================
+env:
+  audit_header: "Audit de l'Environnement"
+  config_files_scanned: "Fichiers de Configuration Analysés"
+  variables_found: "Variables d'Environnement Trouvées"
+  
+  path_added: "'{path}' ajouté au PATH"
+  path_removed: "'{path}' supprimé du PATH"
+  path_already_exists: "'{path}' est déjà dans le PATH"
+  path_not_found: "'{path}' non trouvé dans le PATH"
+  
+  persist_note: "Pour utiliser dans le shell actuel: source {path}"
+  
+# =============================================================================
+# Messages de clé API
+# =============================================================================
+api_key:
+  not_found: "Aucune clé API trouvée"
+  configure_prompt: "Exécutez 'cortex wizard' pour configurer votre clé API."
+  ollama_hint: "Ou utilisez CORTEX_PROVIDER=ollama pour le mode hors ligne."
+  using_provider: "Utilisation de la clé API {provider}"
+  using_ollama: "Utilisation d'Ollama (pas de clé API requise)"
+  
+# =============================================================================
+# Cache
+# =============================================================================
+cache:
+  stats_header: "Statistiques du Cache LLM"
+  hits: "Succès du Cache"
+  misses: "Échecs du Cache"
+  hit_rate: "Taux de Succès: {rate}%"
+  entries: "Total des Entrées"
+  size: "Taille du Cache"
+  cleared: "Cache vidé"
+  
+# =============================================================================
+# Messages d'erreur
+# =============================================================================
+errors:
+  generic: "Une erreur s'est produite"
+  unexpected: "Erreur inattendue: {error}"
+  network_error: "Erreur réseau - veuillez vérifier votre connexion"
+  permission_denied: "Permission refusée"
+  file_not_found: "Fichier non trouvé"
+  invalid_input: "Entrée invalide"
+  timeout: "L'opération a expiré"
+  
+# =============================================================================
+# Indicateurs de progression
+# =============================================================================
+progress:
+  analyzing_requirements: "Analyse des exigences système..."
+  updating_packages: "Mise à jour de la liste des paquets..."
+  downloading: "Téléchargement..."
+  extracting: "Extraction..."
+  configuring: "Configuration..."
+  cleaning_up: "Nettoyage..."
+  completed_in: "Terminé en {seconds} secondes"
