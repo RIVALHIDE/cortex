@@ -229,6 +229,24 @@ wizard:
   ready_message: "Cortex está listo para usar"
   
 # =============================================================================
+# Docker
+# =============================================================================
+docker:
+  scanning_permissions: "Buscando problemas de permisos relacionados con Docker..."
+  operation_cancelled: "Operación cancelada"
+  permissions_fixed: "¡Permisos corregidos exitosamente!"
+  permission_check_failed: "Verificación de permisos fallida: {error}"
+
+# =============================================================================
+# Roles
+# =============================================================================
+role:
+  sensing_context: "IA está detectando el contexto del sistema y patrones de actividad..."
+  set_success: "Rol establecido a: {role}"
+  persist_failed: "Error al persistir rol: {error}"
+  fetching_recommendations: "Obteniendo recomendaciones de IA personalizadas para {role}..."
+
+# =============================================================================
 # Notificaciones
 # =============================================================================
 notify:
@@ -283,6 +301,36 @@ cache:
   entries: "Total de Entradas"
   size: "Tamaño de Caché"
   cleared: "Caché limpiado"
+
+# =============================================================================
+# Etiquetas de UI
+# =============================================================================
+ui:
+  operation_cancelled: "Operación cancelada"
+  error_prefix: "Error"
+  promotion_cancelled: "Promoción cancelada"
+  install_required_sdk: "Instale el SDK requerido o use CORTEX_PROVIDER=ollama"
+  would_run: "Se ejecutaría"
+  note_add_persist: "Nota: Agregue --persist para hacer esto permanente"
+  install_with_pip: "Instalar con: pip install {package}"
+  no_variables_found: "No se encontraron variables de entorno para '{app}'"
+  no_variables_to_export: "No hay variables de entorno para exportar para '{app}'"
+  no_variables_imported: "No se importaron variables"
+  no_env_data_found: "No se encontraron datos de entorno para '{app}'"
+  no_applications_found: "No hay aplicaciones con entornos almacenados"
+  no_variables_to_load: "No hay variables para cargar para '{app}'"
+  fix_path_duplicates: "Ejecute 'cortex env path dedupe' para corregir duplicados en PATH"
+  usage_env_import: "Uso: cortex env import <app> <archivo>"
+  use_template_details: "Use 'cortex env template show <nombre>' para detalles"
+  scanning_directory: "Escaneando directorio..."
+  no_dependency_files: "No se encontraron archivos de dependencias en el directorio actual"
+  no_packages_found: "No se encontraron paquetes en el archivo"
+  no_packages_in_deps: "No se encontraron paquetes en archivos de dependencias"
+  no_install_commands: "No se generaron comandos de instalación"
+  install_with_execute: "Para instalar todos los paquetes, ejecute con la bandera --execute"
+  example_import: "Ejemplo: cortex import {file_path} --execute"
+  example_import_all: "Ejemplo: cortex import --all --execute"
+  installation_cancelled: "Instalación cancelada"
   
 # =============================================================================
 # Mensajes de error
