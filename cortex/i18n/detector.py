@@ -82,6 +82,8 @@ def _parse_locale(locale_string: str) -> str | None:
     - fr.UTF-8
     - de
     - zh_CN.utf8
+    - en_US.UTF-8@latin (with modifier)
+    - sr_RS@latin (Serbian Latin)
 
     Args:
         locale_string: Raw locale string from environment
@@ -104,7 +106,12 @@ def _parse_locale(locale_string: str) -> str | None:
     locale_lower = locale_lower.replace("-", "_")
 
     # Remove encoding suffix (e.g., .UTF-8, .utf8)
-    locale_lower = re.sub(r"\.[a-z0-9_-]+$", "", locale_lower)
+    # Pattern matches: .encoding or .encoding@modifier
+    locale_lower = re.sub(r"\.[a-z0-9_-]+(@[a-z]+)?$", "", locale_lower)
+
+    # Remove @modifier suffix (e.g., @latin, @cyrillic)
+    # This handles cases like "sr_rs@latin" after encoding is already removed
+    locale_lower = re.sub(r"@[a-z]+$", "", locale_lower)
 
     # Try direct mapping first (e.g., "en_us", "zh_cn")
     if locale_lower in LANGUAGE_MAPPINGS:

@@ -41,6 +41,8 @@ language:
   supported_codes: "Unterstützte Sprachcodes"
   select_prompt: "Wählen Sie eine Sprache"
   switched_to: "Gewechselt zu {language}"
+  set_failed: "Fehler beim Festlegen der Sprache: {error}"
+  supported_languages_header: "Unterstützte Sprachen:"
   
 # =============================================================================
 # CLI-Befehle

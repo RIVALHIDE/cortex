@@ -3099,7 +3099,7 @@ def _handle_set_language(language_input: str) -> int:
         # Show error with available options
         cx_print(t("language.invalid_code", code=language_input), "error")
         console.print()
-        console.print("[bold]Supported languages:[/bold]")
+        console.print(f"[bold]{t('language.supported_languages_header')}[/bold]")
         for code, info in SUPPORTED_LANGUAGES.items():
             console.print(f"  • {info['name']} ({info['native']}) - code: [green]{code}[/green]")
         return 1

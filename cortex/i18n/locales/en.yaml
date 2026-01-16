@@ -57,6 +57,7 @@ language:
   switched_to: "Switched to {language}"
   # {error} - error message
   set_failed: "Failed to set language: {error}"
+  supported_languages_header: "Supported languages:"
   
 # =============================================================================
 # CLI commands

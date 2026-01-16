@@ -42,6 +42,7 @@ language:
   select_prompt: "选择语言"
   switched_to: "已切换到{language}"
   set_failed: "设置语言失败: {error}"
+  supported_languages_header: "支持的语言："
   
 # =============================================================================
 # CLI命令
