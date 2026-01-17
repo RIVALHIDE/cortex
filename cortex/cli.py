@@ -206,7 +206,7 @@ class CortexCLI:
         cx_print(message, status)
 
     def _print_error(self, message: str):
-        cx_print(f"Error: {message}", "error")
+        cx_print(f"{t('ui.error_prefix')}: {message}", "error")
 
     def _print_success(self, message: str):
         cx_print(message, "success")
@@ -903,7 +903,7 @@ class CortexCLI:
                     print(f"\n[{current}/{total}] {status_emoji} {step.description}")
                     print(f"  Command: {step.command}")
 
-                print(f"\n{t('install.executing')}...")
+                print(f"\n{t('install.executing')}")
 
                 if parallel:
                     import asyncio
@@ -1447,13 +1447,13 @@ class CortexCLI:
 
             cache = SemanticCache()
             stats = cache.stats()
-            hit_rate = f"{stats.hit_rate * 100:.1f}%" if stats.total else "0.0%"
+            hit_rate_value = f"{stats.hit_rate * 100:.1f}" if stats.total else "0.0"
 
             cx_header(t("cache.stats_header"))
             cx_print(f"{t('cache.hits')}: {stats.hits}", "info")
             cx_print(f"{t('cache.misses')}: {stats.misses}", "info")
-            cx_print(f"{t('cache.hit_rate')}: {hit_rate}", "info")
-            cx_print(f"{t('cache.saved_calls')}: {stats.hits}", "info")
+            cx_print(t("cache.hit_rate", rate=hit_rate_value), "info")
+            cx_print(f"{t('cache.saved_calls')}: {stats.saved_calls}", "info")
             return 0
         except (ImportError, OSError) as e:
             self._print_error(t("cache.read_error", error=str(e)))
