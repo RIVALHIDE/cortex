@@ -86,6 +86,16 @@ cli:
 config:
   missing_subcommand: "Veuillez spécifier une sous-commande (language/show)"
   unknown_action: "Action de configuration inconnue: {action}"
+  header: "Configuration Cortex"
+  language_label: "Langue"
+  source_label: "Source"
+  llm_provider_label: "Fournisseur LLM"
+  config_paths_label: "Chemins de Configuration"
+  preferences_path: "Préférences"
+  history_path: "Historique"
+  use_command_hint: "Utilisez: cortex config language <code> pour changer"
+  list_hint: "Utilisez: cortex config language --list pour les détails"
+  code_label: "Code"
     
 # =============================================================================
 # Installation
@@ -144,22 +154,33 @@ sandbox:
   usage: "Usage: cortex sandbox <commande> [options]"
   commands_header: "Commandes"
   example_workflow: "Exemple de flux de travail"
+  environments_header: "Environnements Sandbox"
   
   creating: "Création du sandbox '{name}'..."
   created: "Environnement sandbox '{name}' créé"
   installing: "Installation de '{package}' dans le sandbox '{name}'..."
   installed_in_sandbox: "{package} installé dans le sandbox"
+  installed_main_system: "{package} installé sur le système principal"
   testing: "Exécution des tests dans le sandbox '{name}'..."
   cleaning: "Suppression du sandbox '{name}'..."
   cleaned: "Sandbox '{name}' supprimé"
   
   test_passed: "Test réussi"
   test_failed: "Test échoué"
+  all_tests_passed: "Tous les tests réussis"
   tests_summary: "{passed}/{total} tests réussis"
   
   docker_required: "Docker est requis pour les commandes sandbox"
+  docker_only_for_sandbox: "Docker est requis uniquement pour les commandes sandbox."
   not_found: "Sandbox non trouvé"
   already_exists: "Le sandbox existe déjà"
+  no_sandboxes: "Aucun environnement sandbox trouvé"
+  create_hint: "Créez-en un avec: cortex sandbox create <nom>"
+  list_hint: "Utilisez 'cortex sandbox list' pour voir les sandboxes disponibles."
+  
+  promote_package: "Installation de '{package}' sur le système principal..."
+  promotion_cancelled: "Promotion annulée"
+  would_run: "Exécuterait: {command}"
   
 # =============================================================================
 # Historique
@@ -219,6 +240,7 @@ wizard:
   api_key_prompt: "Entrez votre clé API"
   api_key_saved: "Clé API enregistrée avec succès"
   api_key_invalid: "Format de clé API invalide"
+  export_api_key_hint: "Veuillez exporter votre clé API dans votre profil shell."
   
   select_provider: "Sélectionnez votre fournisseur LLM"
   provider_anthropic: "Anthropic (Claude)"
@@ -272,6 +294,22 @@ env:
   audit_header: "Audit de l'Environnement"
   config_files_scanned: "Fichiers de Configuration Analysés"
   variables_found: "Variables d'Environnement Trouvées"
+  template_header: "Modèle: {name}"
+  templates_available: "Modèles d'Environnement Disponibles"
+  applications_header: "Applications avec Environnements"
+  health_check_header: "Vérification de Santé de l'Environnement (shell {shell})"
+  path_entries_header: "Entrées PATH"
+  path_dedupe_header: "Déduplication PATH"
+  path_cleanup_header: "Nettoyage PATH"
+  environment_header: "Environnement: {app}"
+  encrypted_stored: "Variable chiffrée et stockée"
+  variable_set: "Variable d'environnement définie"
+  install_cryptography: "Installer avec: pip install cryptography"
+  write_file_failed: "Échec de l'écriture du fichier: {error}"
+  read_file_failed: "Échec de la lecture du fichier: {error}"
+  apply_template_failed: "Échec de l'application du modèle '{name}'"
+  persist_failed: "Échec de la persistance: {error}"
+  persist_removal_failed: "Échec de la suppression persistante: {error}"
   
   path_added: "'{path}' ajouté au PATH"
   path_removed: "'{path}' supprimé du PATH"
@@ -301,6 +339,9 @@ cache:
   entries: "Total des Entrées"
   size: "Taille du Cache"
   cleared: "Cache vidé"
+  saved_calls: "Appels économisés (environ)"
+  read_error: "Impossible de lire les statistiques du cache: {error}"
+  unexpected_error: "Erreur inattendue lors de la lecture des statistiques du cache: {error}"
 
 # =============================================================================
 # Étiquettes UI
@@ -343,6 +384,9 @@ errors:
   file_not_found: "Fichier non trouvé"
   invalid_input: "Entrée invalide"
   timeout: "L'opération a expiré"
+  failed_to: "Échec de {action}: {error}"
+  history_retrieve_failed: "Échec de la récupération de l'historique: {error}"
+  sdk_required: "Installez le SDK requis ou utilisez CORTEX_PROVIDER=ollama"
   
 # =============================================================================
 # Indicateurs de progression
